@@ -6,29 +6,50 @@
   },
   "metadata": {
     "description": "Personal skills collection for Claude Code",
-    "version": "1.4.0"
+    "version": "1.5.0"
   },
   "plugins": [
     {
-      "name": "search-skills",
-      "description": "Web search related skills with privacy focus",
+      "name": "searxng",
+      "description": "Privacy-respecting metasearch using authenticated SearXNG instance",
       "source": "./",
       "strict": false,
-      "skills": [
-        "./skills/searxng"
-      ]
+      "skills": ["./skills/searxng"]
     },
     {
-      "name": "content-skills",
-      "description": "Content generation and creative tools",
+      "name": "felo",
+      "description": "AI-powered conversational search with real-time web results",
       "source": "./",
       "strict": false,
-      "skills": [
-        "./skills/xhs-prompts",
-        "./skills/infographic-prompts",
-        "./skills/cover-image-prompts",
-        "./skills/article-illustrator-prompts"
-      ]
+      "skills": ["./skills/felo"]
+    },
+    {
+      "name": "xhs-prompts",
+      "description": "Xiaohongshu infographic prompts generator for AI image generation",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/xhs-prompts"]
+    },
+    {
+      "name": "infographic-prompts",
+      "description": "Professional infographic drawing prompts generator with 21 layouts and 20 styles",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/infographic-prompts"]
+    },
+    {
+      "name": "cover-image-prompts",
+      "description": "Article cover image prompts generator with 5-dimensional customization",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/cover-image-prompts"]
+    },
+    {
+      "name": "article-illustrator-prompts",
+      "description": "Article illustration prompts generator using Type × Style approach",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/article-illustrator-prompts"]
     }
   ]
 }

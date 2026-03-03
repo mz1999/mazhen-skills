@@ -1,0 +1,318 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["httpx[socks]", "rich"]
+# ///
+"""Felo AI CLI - AI-powered conversational search with real-time web results."""
+
+import argparse
+import os
+import sys
+import json
+import httpx
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich import print as rprint
+
+console = Console()
+stderr_console = Console(stderr=True)
+
+# Configuration from environment variables
+FELO_API_KEY = os.getenv("FELO_API_KEY", "").strip()
+FELO_API_URL = "https://openapi.felo.ai/v2/chat"
+
+# Proxy configuration - supports HTTP, HTTPS, and SOCKS5
+# Only use proxy if FELO_PROXY environment variable is set (non-empty)
+FELO_PROXY = os.getenv("FELO_PROXY", "").strip()
+PROXY = FELO_PROXY if FELO_PROXY else None
+
+
+def chat(query: str, output_format: str = "table") -> dict:
+    """
+    Call Felo Chat API to get AI-powered answer with web sources.
+
+    Args:
+        query: Search query string (1-2000 characters)
+        output_format: Output format (table, json)
+
+    Returns:
+        Dict with answer, resources, and query analysis
+    """
+    # Validate configuration
+    if not FELO_API_KEY:
+        stderr_console.print(
+            "[red]Error:[/red] FELO_API_KEY environment variable is not set."
+        )
+        stderr_console.print(
+            "[dim]Please set your Felo API Key:[/dim]"
+        )
+        stderr_console.print(
+            "  export FELO_API_KEY=your_api_key_here"
+        )
+        stderr_console.print(
+            "[dim]Get your API key from: https://felo.ai[/dim]"
+        )
+        return {"error": "FELO_API_KEY not configured"}
+
+    # Validate query
+    if not query or not query.strip():
+        stderr_console.print(
+            "[red]Error:[/red] Query cannot be empty."
+        )
+        return {"error": "Empty query"}
+
+    query = query.strip()
+    if len(query) > 2000:
+        stderr_console.print(
+            "[red]Error:[/red] Query exceeds 2000 characters limit."
+        )
+        return {"error": "Query too long (max 2000 characters)"}
+
+    headers = {
+        "Authorization": f"Bearer {FELO_API_KEY}",
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+
+    payload = {
+        "query": query
+    }
+
+    try:
+        response = httpx.post(
+            FELO_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=60,
+            verify=True,
+            proxy=PROXY
+        )
+
+        # Handle specific error codes
+        if response.status_code == 401:
+            stderr_console.print(
+                "[red]Authentication failed:[/red] Invalid API Key."
+            )
+            stderr_console.print(
+                "[dim]Please check your FELO_API_KEY configuration.[/dim]"
+            )
+            return {"error": "Authentication failed (401)"}
+
+        if response.status_code == 429:
+            stderr_console.print(
+                "[red]Rate limit exceeded:[/red] Too many requests."
+            )
+            stderr_console.print(
+                "[dim]Felo AI allows 100 requests per minute. Please wait and try again.[/dim]"
+            )
+            return {"error": "Rate limit exceeded (429)"}
+
+        if response.status_code == 400:
+            error_data = response.json() if response.text else {}
+            error_msg = error_data.get("message", "Invalid request parameters")
+            stderr_console.print(
+                f"[red]Bad Request:[/red] {error_msg}"
+            )
+            return {"error": f"Bad request (400): {error_msg}"}
+
+        response.raise_for_status()
+
+        result = response.json()
+
+        # Check for Felo API error response structure
+        if isinstance(result, dict) and result.get("status") == "error":
+            error_code = result.get("code", "UNKNOWN_ERROR")
+            error_msg = result.get("message", "Unknown error occurred")
+            request_id = result.get("request_id", "")
+
+            # Map error codes to user-friendly messages
+            error_messages = {
+                "INVALID_API_KEY": "Invalid API Key. Please check your FELO_API_KEY.",
+                "MISSING_AUTHORIZATION": "Authorization header is missing.",
+                "MALFORMED_AUTHORIZATION": "Authorization header format is incorrect. Use: Bearer YOUR_API_KEY",
+                "MISSING_PARAMETER": "Required parameter is missing.",
+                "INVALID_PARAMETER": "Invalid parameter value.",
+                "QUERY_TOO_LONG": "Query exceeds 2000 characters limit.",
+                "RATE_LIMIT_EXCEEDED": "Rate limit exceeded. Please slow down your requests.",
+                "CHAT_FAILED": "Internal service error. Please retry.",
+                "SERVICE_UNAVAILABLE": "Service temporarily unavailable. Please wait and retry."
+            }
+
+            user_msg = error_messages.get(error_code, error_msg)
+            stderr_console.print(f"[red]Error:[/red] {user_msg}")
+            if request_id:
+                stderr_console.print(f"[dim]Request ID: {request_id}[/dim]")
+            return {"error": f"{error_code}: {error_msg}", "request_id": request_id}
+
+        # Felo API returns successful data in nested "data" field
+        if isinstance(result, dict) and "data" in result:
+            return result["data"]
+        return result
+
+    except httpx.HTTPStatusError as e:
+        stderr_console.print(
+            f"[red]HTTP Error:[/red] {e.response.status_code} - {e.response.reason_phrase}"
+        )
+        return {"error": f"HTTP {e.response.status_code}: {e.response.reason_phrase}"}
+    except httpx.ConnectError as e:
+        stderr_console.print(
+            f"[red]Connection Error:[/red] Unable to connect to Felo AI API"
+        )
+        stderr_console.print(
+            "[dim]Please check your network connection.[/dim]"
+        )
+        return {"error": f"Connection error: {e}"}
+    except httpx.TimeoutException as e:
+        stderr_console.print(
+            "[red]Timeout Error:[/red] Request timed out. Felo AI may be experiencing high load."
+        )
+        return {"error": "Request timeout"}
+    except httpx.HTTPError as e:
+        stderr_console.print(
+            f"[red]HTTP Error:[/red] {e}"
+        )
+        return {"error": str(e)}
+    except json.JSONDecodeError as e:
+        stderr_console.print(
+            "[red]Error:[/red] Failed to parse API response."
+        )
+        return {"error": f"Invalid JSON response: {e}"}
+    except Exception as e:
+        stderr_console.print(
+            f"[red]Unexpected error:[/red] {e}"
+        )
+        return {"error": str(e)}
+
+
+def display_result_table(data: dict, query: str):
+    """Display Felo AI response in a rich formatted table."""
+    if "error" in data:
+        return
+
+    answer = data.get("answer", "")
+    resources = data.get("resources", [])
+    query_analysis = data.get("query_analysis", {})
+    message_id = data.get("message_id", data.get("id", ""))
+
+    # Display query info
+    if query_analysis:
+        optimized_query = query_analysis.get("optimized_query", "")
+        if optimized_query and optimized_query != query:
+            rprint(f"[dim]Original query:[/dim] {query}")
+            rprint(f"[dim]Optimized query:[/dim] [cyan]{optimized_query}[/cyan]")
+            print()
+
+    # Display answer in a panel
+    if answer:
+        rprint(Panel(
+            answer,
+            title="[bold green]Felo AI Answer[/bold green]",
+            title_align="left",
+            border_style="green"
+        ))
+    else:
+        rprint("[yellow]No answer received from Felo AI.[/yellow]")
+
+    # Display resources table
+    if resources:
+        print()
+        table = Table(
+            title="[bold blue]Sources[/bold blue]",
+            show_lines=True,
+            header_style="bold blue"
+        )
+        table.add_column("#", style="dim", width=3)
+        table.add_column("Title", style="bold", width=40)
+        table.add_column("URL", style="blue", width=50)
+        table.add_column("Summary", style="dim", width=40)
+
+        for i, resource in enumerate(resources, 1):
+            title = resource.get("title", "No title")[:50]
+            url = resource.get("link", resource.get("url", ""))
+            url_display = url[:47] + "..." if len(url) > 47 else url
+            summary = resource.get("snippet", resource.get("summary", ""))[:50]
+
+            table.add_row(str(i), title, url_display, summary)
+
+        console.print(table)
+
+        # Display full resource details
+        rprint("\n[bold]Source Details:[/bold]")
+        for i, resource in enumerate(resources, 1):
+            title = resource.get("title", "No title")
+            url = resource.get("link", resource.get("url", ""))
+            snippet = resource.get("snippet", resource.get("summary", ""))
+
+            rprint(f"\n[bold cyan]{i}. {title}[/bold cyan]")
+            rprint(f"   [blue underline]{url}[/blue underline]")
+            if snippet:
+                rprint(f"   [dim]{snippet}[/dim]")
+
+    # Display message ID if available
+    if message_id:
+        print()
+        rprint(f"[dim]Message ID: {message_id}[/dim]")
+
+
+def display_result_json(data: dict):
+    """Display result in JSON format for programmatic use."""
+    print(json.dumps(data, indent=2, ensure_ascii=False))
+
+
+def main():
+    api_key_status = "configured" if FELO_API_KEY else "[red]not configured[/red]"
+
+    parser = argparse.ArgumentParser(
+        description="Felo AI CLI - AI-powered conversational search",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+Examples:
+  %(prog)s chat "What is the latest news about AI?"
+  %(prog)s chat "Explain quantum computing in simple terms"
+  %(prog)s chat "Best restaurants in Tokyo" --format json
+  %(prog)s chat "Python vs JavaScript for beginners" --format table
+
+Environment:
+  FELO_API_KEY: Felo AI API Key (current: {api_key_status})
+
+Rate Limits:
+  100 requests per minute per API key
+  Query length: 1-2000 characters
+
+Documentation:
+  https://felo.ai
+        """
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # Chat command
+    chat_parser = subparsers.add_parser("chat", help="Send a query to Felo AI")
+    chat_parser.add_argument("query", nargs="+", help="Search query (1-2000 characters)")
+    chat_parser.add_argument(
+        "-f", "--format",
+        choices=["table", "json"],
+        default="table",
+        help="Output format (default: table)"
+    )
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return
+
+    if args.command == "chat":
+        query = " ".join(args.query)
+
+        data = chat(query=query, output_format=args.format)
+
+        if args.format == "json":
+            display_result_json(data)
+        else:
+            display_result_table(data, query)
+
+
+if __name__ == "__main__":
+    main()

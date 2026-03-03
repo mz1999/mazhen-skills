@@ -10,30 +10,43 @@ Personal skills collection for Claude Code.
 /plugin marketplace add mz1999/mazhen-skills
 ```
 
-Then install specific skill groups:
+Then install specific skills:
 
 ```bash
-/plugin install search-skills@mazhen-skills
+# Search skills
+/plugin install searxng@mazhen-skills
+/plugin install felo@mazhen-skills
+
+# Content generation prompts
+/plugin install xhs-prompts@mazhen-skills
+/plugin install infographic-prompts@mazhen-skills
+/plugin install cover-image-prompts@mazhen-skills
+/plugin install article-illustrator-prompts@mazhen-skills
 ```
 
 ### Method 2: Direct Install
 
 ```bash
-/plugin install search-skills@mz1999/mazhen-skills
+/plugin install searxng@mz1999/mazhen-skills
 ```
 
 ## Available Skills
 
 ### Search Skills
 
-- **searxng** - Privacy-respecting metasearch using authenticated SearXNG instance
+| Skill | Description |
+|-------|-------------|
+| **searxng** | Privacy-respecting metasearch using authenticated SearXNG instance |
+| **felo** | AI-powered conversational search with real-time web results |
 
 ### Content Generation (Prompts Only)
 
-- **xhs-prompts** - Xiaohongshu infographic prompts generator
-- **infographic-prompts** - Infographic prompts generator
-- **cover-image-prompts** - Article cover image prompts generator
-- **article-illustrator-prompts** - Article illustration prompts generator
+| Skill | Description |
+|-------|-------------|
+| **xhs-prompts** | Xiaohongshu infographic prompts generator |
+| **infographic-prompts** | Professional infographic drawing prompts generator |
+| **cover-image-prompts** | Article cover image prompts generator |
+| **article-illustrator-prompts** | Article illustration prompts generator |
 
 ## Attribution
 

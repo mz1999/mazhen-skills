@@ -42,14 +42,11 @@ your-skills-repo/
   },
   "plugins": [
     {
-      "name": "技能组名称",
-      "description": "技能组描述",
+      "name": "skill-name",
+      "description": "Skill 描述",
       "source": "./",
       "strict": false,
-      "skills": [
-        "./skills/skill-a",
-        "./skills/skill-b"
-      ]
+      "skills": ["./skills/skill-name"]
     }
   ]
 }
@@ -64,9 +61,9 @@ your-skills-repo/
 | `owner.email` | string | 否 | 作者邮箱 |
 | `metadata.description` | string | 是 | 插件包描述 |
 | `metadata.version` | string | 是 | 版本号，使用语义化版本 |
-| `plugins` | array | 是 | 技能组列表 |
-| `plugins[].name` | string | 是 | 技能组名称，用于安装命令 |
-| `plugins[].description` | string | 是 | 技能组描述 |
+| `plugins` | array | 是 | Skill 插件列表 |
+| `plugins[].name` | string | 是 | Skill 名称，用于安装命令 |
+| `plugins[].description` | string | 是 | Skill 描述 |
 | `plugins[].source` | string | 是 | 源代码路径，通常为 `"./"` |
 | `plugins[].strict` | boolean | 是 | 是否严格模式 |
 | `plugins[].skills` | array | 是 | skill 路径列表，相对于仓库根目录 |
@@ -152,14 +149,18 @@ mkdir -p skills/new-skill/scripts
 
 ### 步骤 4: 更新 marketplace.json
 
-在 `plugins` 数组中找到合适的技能组，添加新 skill 的路径：
+在 `plugins` 数组中添加新的 skill 配置：
 
 ```json
 {
-  "name": "技能组名称",
-  "skills": [
-    "./skills/existing-skill",
-    "./skills/new-skill"  // 添加这一行
+  "plugins": [
+    {
+      "name": "new-skill",
+      "description": "New skill description",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/new-skill"]
+    }
   ]
 }
 ```
@@ -184,10 +185,10 @@ git push
 /plugin marketplace add username/repo-name
 ```
 
-### 安装特定技能组
+### 安装特定 Skill
 
 ```bash
-/plugin install 技能组名称@repo-name
+/plugin install skill-name@repo-name
 ```
 
 ### 使用 Skill
@@ -208,8 +209,8 @@ git push
 
 ### 2. 目录组织
 
-- 将相关的 skills 放在同一个技能组中
-- 可以按功能分类：search-skills、content-skills、utility-skills
+- 每个 skill 独立成一个 plugin，方便用户按需安装
+- 可以按功能分类组织目录：search-skills、content-skills、utility-skills
 
 ### 3. 版本管理
 
@@ -243,27 +244,22 @@ git push
   },
   "metadata": {
     "description": "Personal skills for daily work",
-    "version": "1.2.0"
+    "version": "1.5.0"
   },
   "plugins": [
     {
-      "name": "search-skills",
-      "description": "Web search related skills",
+      "name": "searxng",
+      "description": "Privacy-respecting metasearch using authenticated SearXNG instance",
       "source": "./",
       "strict": false,
-      "skills": [
-        "./skills/searxng"
-      ]
+      "skills": ["./skills/searxng"]
     },
     {
-      "name": "dev-tools",
-      "description": "Development utility tools",
+      "name": "felo",
+      "description": "AI-powered conversational search with real-time web results",
       "source": "./",
       "strict": false,
-      "skills": [
-        "./skills/git-helper",
-        "./skills/docker-utils"
-      ]
+      "skills": ["./skills/felo"]
     }
   ]
 }
