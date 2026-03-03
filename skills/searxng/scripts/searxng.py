@@ -23,6 +23,11 @@ SEARXNG_URL = os.getenv("SEARXNG_URL", "").rstrip("/")
 SEARXNG_USERNAME = os.getenv("SEARXNG_USERNAME")
 SEARXNG_PASSWORD = os.getenv("SEARXNG_PASSWORD")
 
+# Proxy configuration - supports HTTP, HTTPS, and SOCKS5
+# Only use proxy if SEARXNG_PROXY environment variable is set (non-empty)
+SEARXNG_PROXY = os.getenv("SEARXNG_PROXY", "").strip()
+PROXY = SEARXNG_PROXY if SEARXNG_PROXY else None
+
 
 def get_auth() -> BasicAuth | None:
     """Build authentication object from environment variables."""
@@ -95,7 +100,8 @@ def search_searxng(
             params=params,
             auth=auth,
             timeout=30,
-            verify=True  # Enable SSL verification for public deployments
+            verify=True,  # Enable SSL verification for public deployments
+            proxy=PROXY   # Add proxy support
         )
 
         # Handle authentication errors
@@ -218,6 +224,7 @@ Environment:
   SEARXNG_URL:      SearXNG instance URL (current: {default_url})
   SEARXNG_USERNAME: HTTP Basic Auth username
   SEARXNG_PASSWORD: HTTP Basic Auth password
+  SEARXNG_PROXY:    Proxy URL (optional, e.g., socks5://127.0.0.1:7897)
         """
     )
 

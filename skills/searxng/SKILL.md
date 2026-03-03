@@ -64,6 +64,31 @@ Or configure in your Clawdbot config:
 }
 ```
 
+### Proxy Configuration (Optional)
+
+By default, the skill does not use a proxy. If you need to use a proxy to access your SearXNG instance, set the `SEARXNG_PROXY` environment variable.
+
+**Supported proxy formats:**
+
+| Protocol | Format | Example |
+|----------|--------|---------|
+| HTTP | `http://host:port` | `http://127.0.0.1:8080` |
+| HTTPS | `https://host:port` | `https://proxy.example.com:443` |
+| SOCKS5 | `socks5://host:port` | `socks5://127.0.0.1:7897` |
+| SOCKS5 (authenticated) | `socks5://user:pass@host:port` | `socks5://user:pass@127.0.0.1:1080` |
+
+**Enable proxy:**
+
+```bash
+# HTTP/HTTPS proxy
+export SEARXNG_PROXY=http://127.0.0.1:8080
+
+# SOCKS5 proxy (common for Clash/V2Ray)
+export SEARXNG_PROXY=socks5://127.0.0.1:7897
+```
+
+When not set or set to empty string, no proxy is used.
+
 ## Features
 
 - 🔐 HTTP Basic Auth protection
