@@ -1,0 +1,34 @@
+{
+  "name": "mazhen-skills",
+  "owner": {
+    "name": "mazhen",
+    "email": ""
+  },
+  "metadata": {
+    "description": "Personal skills collection for Claude Code",
+    "version": "1.4.0"
+  },
+  "plugins": [
+    {
+      "name": "search-skills",
+      "description": "Web search related skills with privacy focus",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/searxng"
+      ]
+    },
+    {
+      "name": "content-skills",
+      "description": "Content generation and creative tools",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/xhs-prompts",
+        "./skills/infographic-prompts",
+        "./skills/cover-image-prompts",
+        "./skills/article-illustrator-prompts"
+      ]
+    }
+  ]
+}
