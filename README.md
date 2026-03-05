@@ -22,6 +22,9 @@ Then install specific skills:
 /plugin install infographic-prompts@mazhen-skills
 /plugin install cover-image-prompts@mazhen-skills
 /plugin install article-illustrator-prompts@mazhen-skills
+
+# Diagram generation
+/plugin install drawio@mazhen-skills
 ```
 
 ### Method 2: Direct Install
@@ -48,6 +51,12 @@ Then install specific skills:
 | **cover-image-prompts** | Article cover image prompts generator |
 | **article-illustrator-prompts** | Article illustration prompts generator |
 
+### Diagram Generation
+
+| Skill | Description |
+|-------|-------------|
+| **drawio** | Generate draw.io diagrams as .drawio files, export to PNG/SVG/PDF |
+
 ## Attribution
 
 以下技能是基于 [baoyu-skills](https://github.com/JimLiu/baoyu-skills) 复刻的提示词版本：
@@ -60,6 +69,10 @@ Then install specific skills:
 | `article-illustrator-prompts` | `baoyu-article-illustrator` | 只生成提示词，不生成图片 |
 
 原 baoyu-skills 提供完整的图片生成功能，本项目仅保留提示词生成功能。
+
+### drawio
+
+`drawio` skill 来自 [drawio-mcp](https://github.com/jgraph/drawio-mcp) 项目，是一个纯提示词类型的 skill，用于生成 draw.io 图表文件。
 
 ## Documentation
 
