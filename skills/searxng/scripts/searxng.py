@@ -28,6 +28,11 @@ SEARXNG_PASSWORD = os.getenv("SEARXNG_PASSWORD")
 SEARXNG_PROXY = os.getenv("SEARXNG_PROXY", "").strip()
 PROXY = SEARXNG_PROXY if SEARXNG_PROXY else None
 
+# Display constants
+URL_DISPLAY_MAX_LEN = 50
+TITLE_DISPLAY_MAX_LEN = 50
+SNIPPET_DISPLAY_MAX_LEN = 50
+
 
 def get_auth() -> BasicAuth | None:
     """Build authentication object from environment variables."""
@@ -156,7 +161,7 @@ def search_searxng(
         return {"error": str(e), "results": []}
 
 
-def display_results_table(data: dict, query: str):
+def display_result_table(data: dict, query: str):
     """Display search results in a rich table."""
     results = data.get("results", [])
 
@@ -171,14 +176,15 @@ def display_results_table(data: dict, query: str):
     table.add_column("Engines", style="green", width=20)
 
     for i, result in enumerate(results, 1):
-        title = result.get("title", "No title")[:70]
-        url = result.get("url", "")[:45] + "..." if len(result.get("url", "")) > 45 else result.get("url", "")
+        title = result.get("title", "No title")[:TITLE_DISPLAY_MAX_LEN]
+        url = result.get("url", "")
+        url_display = url[:URL_DISPLAY_MAX_LEN] + "..." if len(url) > URL_DISPLAY_MAX_LEN else url
         engines = ", ".join(result.get("engines", []))[:18]
 
         table.add_row(
             str(i),
             title,
-            url,
+            url_display,
             engines
         )
 
@@ -283,7 +289,7 @@ Environment:
         if args.format == "json":
             display_results_json(data)
         else:
-            display_results_table(data, query)
+            display_result_table(data, query)
 
 
 if __name__ == "__main__":

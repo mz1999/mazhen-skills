@@ -33,6 +33,22 @@ MAX_RETRIES = 3
 RETRY_DELAY = 1  # Initial delay in seconds
 RETRY_BACKOFF = 2  # Exponential backoff multiplier
 
+# Query constants
+QUERY_MAX_LENGTH = 2000
+
+# HTTP constants
+TIMEOUT_SECONDS = 60
+
+# Display constants
+URL_DISPLAY_MAX_LEN = 50
+TITLE_DISPLAY_MAX_LEN = 50
+SNIPPET_DISPLAY_MAX_LEN = 50
+
+
+def _calculate_delay(attempt: int) -> float:
+    """Calculate retry delay with exponential backoff."""
+    return RETRY_DELAY * (RETRY_BACKOFF ** attempt)
+
 
 def chat(query: str, output_format: str = "table", max_retries: int = MAX_RETRIES) -> dict:
     """
@@ -70,11 +86,11 @@ def chat(query: str, output_format: str = "table", max_retries: int = MAX_RETRIE
         return {"error": "Empty query"}
 
     query = query.strip()
-    if len(query) > 2000:
+    if len(query) > QUERY_MAX_LENGTH:
         stderr_console.print(
-            "[red]Error:[/red] Query exceeds 2000 characters limit."
+            f"[red]Error:[/red] Query exceeds {QUERY_MAX_LENGTH} characters limit."
         )
-        return {"error": "Query too long (max 2000 characters)"}
+        return {"error": f"Query too long (max {QUERY_MAX_LENGTH} characters)"}
 
     headers = {
         "Authorization": f"Bearer {FELO_API_KEY}",
@@ -87,14 +103,13 @@ def chat(query: str, output_format: str = "table", max_retries: int = MAX_RETRIE
     }
 
     # Retry logic with exponential backoff
-    last_error = None
     for attempt in range(max_retries + 1):
         try:
             response = httpx.post(
                 FELO_API_URL,
                 headers=headers,
                 json=payload,
-                timeout=60,
+                timeout=TIMEOUT_SECONDS,
                 verify=True,
                 proxy=PROXY
             )
@@ -129,7 +144,7 @@ def chat(query: str, output_format: str = "table", max_retries: int = MAX_RETRIE
             # Retry on 5xx server errors
             if response.status_code >= 500:
                 if attempt < max_retries:
-                    delay = RETRY_DELAY * (RETRY_BACKOFF ** attempt)
+                    delay = _calculate_delay(attempt)
                     stderr_console.print(
                         f"[yellow]Server error {response.status_code}, retrying in {delay}s...[/yellow]"
                     )
@@ -149,11 +164,12 @@ def chat(query: str, output_format: str = "table", max_retries: int = MAX_RETRIE
                 # Map error codes to user-friendly messages
                 error_messages = {
                     "INVALID_API_KEY": "Invalid API Key. Please check your FELO_API_KEY.",
+                    "EXPIRED_API_KEY": "API Key has expired. Please generate a new API Key from your account settings.",
                     "MISSING_AUTHORIZATION": "Authorization header is missing.",
                     "MALFORMED_AUTHORIZATION": "Authorization header format is incorrect. Use: Bearer YOUR_API_KEY",
                     "MISSING_PARAMETER": "Required parameter is missing.",
                     "INVALID_PARAMETER": "Invalid parameter value.",
-                    "QUERY_TOO_LONG": "Query exceeds 2000 characters limit.",
+                    "QUERY_TOO_LONG": f"Query exceeds {QUERY_MAX_LENGTH} characters limit.",
                     "RATE_LIMIT_EXCEEDED": "Rate limit exceeded. Please slow down your requests.",
                     "CHAT_FAILED": "Internal service error. Please retry.",
                     "SERVICE_UNAVAILABLE": "Service temporarily unavailable. Please wait and retry."
@@ -172,7 +188,7 @@ def chat(query: str, output_format: str = "table", max_retries: int = MAX_RETRIE
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code >= 500 and attempt < max_retries:
-                delay = RETRY_DELAY * (RETRY_BACKOFF ** attempt)
+                delay = _calculate_delay(attempt)
                 stderr_console.print(
                     f"[yellow]Server error {e.response.status_code}, retrying in {delay}s...[/yellow]"
                 )
@@ -184,7 +200,7 @@ def chat(query: str, output_format: str = "table", max_retries: int = MAX_RETRIE
             return {"error": f"HTTP {e.response.status_code}: {e.response.reason_phrase}"}
         except httpx.ConnectError as e:
             if attempt < max_retries:
-                delay = RETRY_DELAY * (RETRY_BACKOFF ** attempt)
+                delay = _calculate_delay(attempt)
                 stderr_console.print(
                     f"[yellow]Connection error, retrying in {delay}s...[/yellow]"
                 )
@@ -199,7 +215,7 @@ def chat(query: str, output_format: str = "table", max_retries: int = MAX_RETRIE
             return {"error": f"Connection error: {e}"}
         except httpx.TimeoutException as e:
             if attempt < max_retries:
-                delay = RETRY_DELAY * (RETRY_BACKOFF ** attempt)
+                delay = _calculate_delay(attempt)
                 stderr_console.print(
                     f"[yellow]Request timeout, retrying in {delay}s...[/yellow]"
                 )
@@ -226,8 +242,6 @@ def chat(query: str, output_format: str = "table", max_retries: int = MAX_RETRIE
             return {"error": str(e)}
 
     # If we've exhausted all retries
-    if last_error:
-        return {"error": f"Max retries exceeded: {last_error}"}
     return {"error": "Max retries exceeded"}
 
 
@@ -273,13 +287,18 @@ def display_result_table(data: dict, query: str):
         table.add_column("URL", style="blue", width=50)
         table.add_column("Summary", style="dim", width=40)
 
+        # Build table and details in single iteration
         for i, resource in enumerate(resources, 1):
-            title = resource.get("title", "No title")[:50]
+            title = resource.get("title", "No title")
             url = resource.get("link", resource.get("url", ""))
-            url_display = url[:47] + "..." if len(url) > 47 else url
-            summary = resource.get("snippet", resource.get("summary", ""))[:50]
+            snippet = resource.get("snippet", resource.get("summary", ""))
 
-            table.add_row(str(i), title, url_display, summary)
+            # Truncate for table display
+            title_display = title[:TITLE_DISPLAY_MAX_LEN] + "..." if len(title) > TITLE_DISPLAY_MAX_LEN else title
+            url_display = url[:URL_DISPLAY_MAX_LEN] + "..." if len(url) > URL_DISPLAY_MAX_LEN else url
+            summary_display = snippet[:SNIPPET_DISPLAY_MAX_LEN] + "..." if len(snippet) > SNIPPET_DISPLAY_MAX_LEN else snippet
+
+            table.add_row(str(i), title_display, url_display, summary_display)
 
         console.print(table)
 
