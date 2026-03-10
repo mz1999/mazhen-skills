@@ -1,9 +1,9 @@
 ---
-name: felo
+name: felo-search
 description: "Felo AI real-time web search for questions requiring current/live information. Triggers on current events, news, trends, real-time data, information queries, location queries, how-to guides, shopping, or when Claude's knowledge may be outdated."
 ---
 
-# Felo AI Chat - Conversational Search
+# Felo Search Skill
 
 Felo AI provides AI-driven conversational search that generates intelligent answers based on real-time web search results, with cited sources and query analysis.
 
@@ -24,9 +24,10 @@ Trigger this skill for questions requiring current or real-time information:
 - 简体中文: 最近、什么、哪里、怎么样、如何、查、搜、找、推荐、比较、新闻、天气
 - 繁體中文: 最近、什麼、哪裡、怎麼樣、如何、查、搜、找、推薦、比較、新聞、天氣
 - 日本語: 最近、何、どこ、どう、検索、探す、おすすめ、比較、ニュース、天気
+- 한국어: 최근, 무엇, 어디, 어떻게
 - English: latest, recent, what, where, how, best, search, find, compare, news, weather
 
-**Explicit commands:** `/felo`, "search with felo", "felo search"
+**Explicit commands:** `/felo-search`, "search with felo", "felo search"
 
 **Do NOT use for:**
 - Code questions about the user's codebase (unless asking about external libraries/docs)
@@ -110,12 +111,14 @@ When not set or set to empty string, no proxy is used.
 
 ## Features
 
-- 🤖 AI-powered conversational answers
-- 🌐 Real-time web search results
-- 📚 Cited sources with links and summaries
-- 🔍 Query analysis and optimization
-- 🎨 Rich formatted output with sources table
-- 🚀 JSON mode for programmatic use
+- AI-powered conversational answers
+- Real-time web search results
+- Cited sources with links and summaries
+- Query analysis and optimization
+- Rich formatted output with sources table
+- JSON mode for programmatic use
+- Multi-language support (Chinese, English, Japanese, Korean)
+- Retry with exponential backoff for transient errors
 
 ## Rate Limits
 
@@ -149,51 +152,60 @@ When not set or set to empty string, no proxy is used.
 
 ## Complete Examples
 
-### Example 1: English Query
+### Example 1: Weather query
 
 **User asks:** "What's the weather in Tokyo today?"
 
-**Agent executes:**
+**Expected response format:**
+```
+## Answer
+Tokyo weather today: Sunny, 22°C (72°F). High of 25°C, low of 18°C.
+Light winds from the east at 10 km/h. UV index: 6 (high).
+Good day for outdoor activities!
+
+## Query Analysis
+Optimized queries: Tokyo weather today, 東京 天気 今日
+```
+
+**Bash command:**
 ```bash
 uv run ${SKILL_DIR}/scripts/felo.py chat "What's the weather in Tokyo today?"
 ```
 
-**Expected output:**
+### Example 2: Local news / events
+
+**User asks:** "What's new in Hangzhou recently?"
+
+**Expected response format:**
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ Felo AI Answer                                                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ Tokyo weather today: Sunny, 22°C (72°F). High of 25°C, low of 18°C.        │
-│ Light winds from the east at 10 km/h. UV index: 6 (high).                  │
-│ Good day for outdoor activities!                                           │
-└─────────────────────────────────────────────────────────────────────────────┘
+## Answer
+Recent news in Hangzhou: Asian Games venue upgrades completed, West Lake night tours launched, new metro lines opened. Details...
+
+## Query Analysis
+Optimized queries: Hangzhou recent news, Hangzhou events, 杭州 最近 新闻
 ```
 
-### Example 2: Simplified Chinese (简体中文)
-
-**User asks:** "杭州最近有什么新鲜事？"
-
-**Agent executes:**
+**Bash command:**
 ```bash
-uv run ${SKILL_DIR}/scripts/felo.py chat "杭州最近有什么新鲜事"
+uv run ${SKILL_DIR}/scripts/felo.py chat "What's new in Hangzhou recently?"
 ```
 
-### Example 3: Traditional Chinese - Taiwan (繁體中文-台灣)
+### Example 3: Travel / things to do
 
-**User asks:** "台北最近有什麼好玩的地方？"
+**User asks:** "What are the best things to do in Taipei?"
 
-**Agent executes:**
+**Bash command:**
 ```bash
-uv run ${SKILL_DIR}/scripts/felo.py chat "台北最近有什麼好玩的地方"
+uv run ${SKILL_DIR}/scripts/felo.py chat "What are the best things to do in Taipei?"
 ```
 
-### Example 4: Japanese (日本語)
+### Example 4: Restaurants / recommendations
 
-**User asks:** "東京で今人気のレストランは？"
+**User asks:** "Popular restaurants in Tokyo?"
 
-**Agent executes:**
+**Bash command:**
 ```bash
-uv run ${SKILL_DIR}/scripts/felo.py chat "東京で今人気のレストランは"
+uv run ${SKILL_DIR}/scripts/felo.py chat "Popular restaurants in Tokyo?"
 ```
 
 ### Example 5: JSON Output for Programmatic Use
@@ -236,7 +248,7 @@ uv run ${SKILL_DIR}/scripts/felo.py chat "Latest AI news" --format json
 {
   "answer": "AI-generated comprehensive answer",
   "resources": [...],
-  "query_analysis": {...}
+  "query_analysis": {"queries": [...]}
 }
 ```
 

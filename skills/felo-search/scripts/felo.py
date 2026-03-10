@@ -256,12 +256,16 @@ def display_result_table(data: dict, query: str):
     message_id = data.get("message_id", data.get("id", ""))
 
     # Display query info
-    if query_analysis:
-        optimized_query = query_analysis.get("optimized_query", "")
-        if optimized_query and optimized_query != query:
-            rprint(f"[dim]Original query:[/dim] {query}")
-            rprint(f"[dim]Optimized query:[/dim] [cyan]{optimized_query}[/cyan]")
-            print()
+    queries = query_analysis.get("queries", []) if isinstance(query_analysis, dict) else []
+    if queries:
+        rprint(f"[dim]Original query:[/dim] {query}")
+        if len(queries) == 1:
+            rprint(f"[dim]Optimized query:[/dim] [cyan]{queries[0]}[/cyan]")
+        else:
+            rprint(f"[dim]Optimized queries:[/dim]")
+            for i, q in enumerate(queries, 1):
+                rprint(f"  [cyan]{i}. {q}[/cyan]")
+        print()
 
     # Display answer in a panel
     if answer:
