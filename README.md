@@ -61,6 +61,12 @@ The following skills require manual invocation using `/skill-name`:
 |-------|-------------|---------|
 | **drawio** | Generate draw.io diagrams as .drawio files, export to PNG/SVG/PDF | `/drawio` |
 
+### Web Content Extraction (Manual Invocation)
+
+| Skill | Description | Command |
+|-------|-------------|---------|
+| **felo-web-fetch** | Extract web page content as markdown, HTML, or plain text | `/felo-web-fetch` |
+
 ## Attribution
 
 以下技能是基于 [baoyu-skills](https://github.com/JimLiu/baoyu-skills) 复刻的提示词版本：

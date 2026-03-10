@@ -57,6 +57,13 @@
       "source": "./",
       "strict": false,
       "skills": ["./skills/drawio"]
+    },
+    {
+      "name": "felo-web-fetch",
+      "description": "Extract web page content as markdown, HTML, or plain text using Felo AI",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/felo-web-fetch"]
     }
   ]
 }
