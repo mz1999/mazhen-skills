@@ -1,6 +1,7 @@
 ---
 name: xhs-prompts
 description: Generates drawing prompts for Xiaohongshu (Little Red Book) infographic series with 10 visual styles and 8 layouts. Breaks content into 1-10 cartoon-style image prompts optimized for XHS engagement. Use when user mentions "小红书提示词", "XHS prompts", "RedNote drawing prompts", "小红书绘图提示词", or wants AI image generation prompts for Chinese social media infographics.
+disable-model-invocation: true
 ---
 
 # Xiaohongshu Infographic Prompt Generator

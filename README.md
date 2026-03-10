@@ -35,27 +35,31 @@ Then install specific skills:
 
 ## Available Skills
 
-### Search Skills
+### Search Skills (Auto-triggered)
+
+The following skills are automatically triggered when Claude detects a relevant request:
 
 | Skill | Description |
 |-------|-------------|
 | **searxng** | Privacy-respecting metasearch using authenticated SearXNG instance |
 | **felo** | AI-powered conversational search with real-time web results |
 
-### Content Generation (Prompts Only)
+### Content Generation (Manual Invocation)
 
-| Skill | Description |
-|-------|-------------|
-| **xhs-prompts** | Xiaohongshu infographic prompts generator |
-| **infographic-prompts** | Professional infographic drawing prompts generator |
-| **cover-image-prompts** | Article cover image prompts generator |
-| **article-illustrator-prompts** | Article illustration prompts generator |
+The following skills require manual invocation using `/skill-name`:
 
-### Diagram Generation
+| Skill | Description | Command |
+|-------|-------------|---------|
+| **xhs-prompts** | Xiaohongshu infographic prompts generator | `/xhs-prompts` |
+| **infographic-prompts** | Professional infographic drawing prompts generator | `/infographic-prompts` |
+| **cover-image-prompts** | Article cover image prompts generator | `/cover-image-prompts` |
+| **article-illustrator-prompts** | Article illustration prompts generator | `/article-illustrator-prompts` |
 
-| Skill | Description |
-|-------|-------------|
-| **drawio** | Generate draw.io diagrams as .drawio files, export to PNG/SVG/PDF |
+### Diagram Generation (Manual Invocation)
+
+| Skill | Description | Command |
+|-------|-------------|---------|
+| **drawio** | Generate draw.io diagrams as .drawio files, export to PNG/SVG/PDF | `/drawio` |
 
 ## Attribution
 

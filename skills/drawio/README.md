@@ -26,6 +26,8 @@ This skill is available through the Marketplace. Install with:
 
 ## Usage
 
+> **Note:** This skill requires manual invocation (`disable-model-invocation: true`). Use `/drawio` command to activate it.
+
 ```
 /drawio create a flowchart for user login
 ```

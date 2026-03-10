@@ -1,6 +1,7 @@
 ---
 name: infographic-prompts
 description: Generates professional infographic drawing prompts with 21 layout types and 20 visual styles. Analyzes content, recommends layout×style combinations, and outputs ready-to-use image generation prompts. Use when user asks for "infographic prompt", "信息图提示词", or when they want infographic prompts without image generation.
+disable-model-invocation: true
 ---
 
 # Infographic Prompt Generator

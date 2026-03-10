@@ -1,6 +1,7 @@
 ---
 name: article-illustrator-prompts
 description: Analyzes article structure, identifies positions requiring visual aids, and generates illustration prompts using Type × Style two-dimension approach. Outputs ready-to-use drawing prompts without generating actual images. Use when user asks to "create illustration prompts", "generate prompts for article images", "article illustration prompts", or "文章配图提示词".
+disable-model-invocation: true
 ---
 
 # Article Illustrator Prompts

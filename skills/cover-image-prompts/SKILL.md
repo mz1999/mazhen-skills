@@ -1,6 +1,7 @@
 ---
 name: cover-image-prompts
 description: Generates article cover image prompts with 5 dimensions (type, palette, rendering, text, mood) combining 9 color palettes and 6 rendering styles. Outputs only the generation prompt to a file, not the actual image. Use when user asks to "generate cover prompt", "create cover image prompt", or "make cover prompt".
+disable-model-invocation: true
 ---
 
 # Cover Image Prompt Generator
