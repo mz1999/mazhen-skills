@@ -17,11 +17,11 @@
       "skills": ["./skills/searxng"]
     },
     {
-      "name": "felo",
+      "name": "felo-search",
       "description": "AI-powered conversational search with real-time web results",
       "source": "./",
       "strict": false,
-      "skills": ["./skills/felo"]
+      "skills": ["./skills/felo-search"]
     },
     {
       "name": "xhs-prompts",
