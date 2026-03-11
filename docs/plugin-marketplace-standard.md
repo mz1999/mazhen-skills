@@ -29,6 +29,10 @@ your-skills-repo/
 
 **关键区别**：实际结构使用 `plugins/` 目录而非 `skills/` 目录，每个插件是一个独立的包，可以单独安装和启用。
 
+### 结构示意图
+
+![插件市场仓库结构示意图](./images/marketplace-structure.drawio.svg)
+
 ## 核心配置文件
 
 ### .claude-plugin/marketplace.json
