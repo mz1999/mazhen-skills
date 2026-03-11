@@ -1,69 +1,62 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "mazhen-skills",
+  "description": "Personal skills collection for Claude Code - search tools, prompt generators, and utilities",
   "owner": {
     "name": "mazhen",
     "email": ""
   },
   "metadata": {
-    "description": "Personal skills collection for Claude Code",
-    "version": "1.6.0"
+    "version": "2.0.0"
   },
   "plugins": [
     {
-      "name": "searxng",
-      "description": "Privacy-respecting metasearch using authenticated SearXNG instance",
-      "source": "./",
-      "strict": false,
-      "skills": ["./skills/searxng"]
-    },
-    {
-      "name": "felo-search",
-      "description": "AI-powered conversational search with real-time web results",
-      "source": "./",
-      "strict": false,
-      "skills": ["./skills/felo-search"]
-    },
-    {
-      "name": "xhs-prompts",
-      "description": "Xiaohongshu infographic prompts generator for AI image generation",
-      "source": "./",
-      "strict": false,
-      "skills": ["./skills/xhs-prompts"]
-    },
-    {
-      "name": "infographic-prompts",
-      "description": "Professional infographic drawing prompts generator with 21 layouts and 20 styles",
-      "source": "./",
-      "strict": false,
-      "skills": ["./skills/infographic-prompts"]
+      "name": "article-illustrator-prompts",
+      "description": "Analyzes article structure, identifies positions requiring visual aids, and generates illustration prompts using Type × Style two-dimension approach",
+      "source": "./plugins/article-illustrator-prompts",
+      "strict": false
     },
     {
       "name": "cover-image-prompts",
-      "description": "Article cover image prompts generator with 5-dimensional customization",
-      "source": "./",
-      "strict": false,
-      "skills": ["./skills/cover-image-prompts"]
-    },
-    {
-      "name": "article-illustrator-prompts",
-      "description": "Article illustration prompts generator using Type × Style approach",
-      "source": "./",
-      "strict": false,
-      "skills": ["./skills/article-illustrator-prompts"]
+      "description": "Generates article cover image prompts with 5 dimensions (type, palette, rendering, text, mood)",
+      "source": "./plugins/cover-image-prompts",
+      "strict": false
     },
     {
       "name": "drawio",
       "description": "Generate draw.io diagrams as .drawio files, optionally export to PNG/SVG/PDF with embedded XML",
-      "source": "./",
-      "strict": false,
-      "skills": ["./skills/drawio"]
+      "source": "./plugins/drawio",
+      "strict": false
+    },
+    {
+      "name": "felo-search",
+      "description": "Felo AI real-time web search for questions requiring current/live information",
+      "source": "./plugins/felo-search",
+      "strict": false
     },
     {
       "name": "felo-web-fetch",
       "description": "Extract web page content as markdown, HTML, or plain text using Felo AI",
-      "source": "./",
-      "strict": false,
-      "skills": ["./skills/felo-web-fetch"]
+      "source": "./plugins/felo-web-fetch",
+      "strict": false
+    },
+    {
+      "name": "infographic-prompts",
+      "description": "Generates professional infographic drawing prompts with 21 layout types and 20 visual styles",
+      "source": "./plugins/infographic-prompts",
+      "strict": false
+    },
+    {
+      "name": "searxng",
+      "description": "Privacy-respecting metasearch using your authenticated SearXNG instance",
+      "source": "./plugins/searxng",
+      "strict": false
+    },
+    {
+      "name": "xhs-prompts",
+      "description": "Generates drawing prompts for Xiaohongshu (Little Red Book) infographic series",
+      "source": "./plugins/xhs-prompts",
+      "strict": false
     }
   ]
 }

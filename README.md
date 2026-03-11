@@ -2,6 +2,24 @@
 
 Personal skills collection for Claude Code.
 
+## Structure
+
+Each skill is packaged as an independent plugin in the `plugins/` directory:
+
+```
+plugins/
+├── article-illustrator-prompts/   # Article illustration prompts
+├── cover-image-prompts/           # Cover image prompts
+├── drawio/                        # Draw.io diagram generation
+├── felo-search/                   # Felo AI web search
+├── felo-web-fetch/                # Web page content extraction
+├── infographic-prompts/           # Infographic prompts
+├── searxng/                       # SearXNG metasearch
+└── xhs-prompts/                   # Xiaohongshu prompts
+```
+
+This structure allows each skill to be installed and enabled independently.
+
 ## Installation
 
 ### Method 1: Add to Plugin Marketplace (Recommended)
@@ -15,7 +33,7 @@ Then install specific skills:
 ```bash
 # Search skills
 /plugin install searxng@mazhen-skills
-/plugin install felo@mazhen-skills
+/plugin install felo-search@mazhen-skills
 
 # Content generation prompts
 /plugin install xhs-prompts@mazhen-skills

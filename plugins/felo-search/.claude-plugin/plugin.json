@@ -1,0 +1,9 @@
+{
+  "name": "felo-search",
+  "description": "Felo AI real-time web search for questions requiring current/live information. Triggers on current events, news, trends, real-time data, information queries, location queries, how-to guides, shopping, or when Claude's knowledge may be outdated.",
+  "version": "1.0.0",
+  "author": {
+    "name": "mazhen",
+    "email": ""
+  }
+}

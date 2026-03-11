@@ -1,0 +1,9 @@
+{
+  "name": "searxng",
+  "description": "Privacy-respecting metasearch using your authenticated SearXNG instance. Search the web with HTTP Basic Auth protection.",
+  "version": "1.0.0",
+  "author": {
+    "name": "mazhen",
+    "email": ""
+  }
+}
