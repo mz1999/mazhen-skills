@@ -218,8 +218,16 @@ async function fetchJson(url, init, timeoutMs) {
 function buildPayload(args) {
   const payload = { url: args.url };
 
-  if (args.outputFormat) payload.output_format = args.outputFormat;
-  if (args.crawlMode) payload.crawl_mode = args.crawlMode;
+  // 设置智能默认值
+  payload.output_format = args.outputFormat || 'markdown';
+  payload.crawl_mode = args.crawlMode || 'fine';
+
+  // 默认启用可读性处理
+  if (args.withReadability !== null) {
+    payload.with_readability = args.withReadability;
+  } else {
+    payload.with_readability = true;
+  }
   if (args.targetSelector) payload.target_selector = args.targetSelector;
   if (args.waitForSelector) payload.wait_for_selector = args.waitForSelector;
   if (args.userAgent) payload.user_agent = args.userAgent;
@@ -236,7 +244,6 @@ function buildPayload(args) {
     }
   }
 
-  if (args.withReadability !== null) payload.with_readability = args.withReadability;
   if (args.withLinksSummary !== null) payload.with_links_summary = args.withLinksSummary;
   if (args.withImagesSummary !== null) payload.with_images_summary = args.withImagesSummary;
   if (args.withImagesReadability !== null) payload.with_images_readability = args.withImagesReadability;
