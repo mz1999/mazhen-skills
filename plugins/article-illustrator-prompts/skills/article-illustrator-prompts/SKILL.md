@@ -2,6 +2,9 @@
 name: article-illustrator-prompts
 description: Analyzes article structure, identifies positions requiring visual aids, and generates illustration prompts using Type × Style two-dimension approach. Outputs ready-to-use drawing prompts without generating actual images. Use when user asks to "create illustration prompts", "generate prompts for article images", "article illustration prompts", or "文章配图提示词".
 disable-model-invocation: true
+version: 1.56.1
+metadata:
+  source: baoyu-skills
 ---
 
 # Article Illustrator Prompts
@@ -16,6 +19,8 @@ Analyze articles, identify illustration positions, generate ready-to-use drawing
 | **Style** | Visual aesthetics | notion, warm, minimal, blueprint, watercolor, elegant |
 
 Combine freely: `--type infographic --style blueprint`
+
+Or use presets: `--preset tech-explainer` → type + style in one flag. See [Style Presets](references/style-presets.md).
 
 ## Types
 
@@ -48,8 +53,18 @@ See [references/styles.md](references/styles.md) for Core Styles, full gallery, 
 **1.5 Load Preferences (EXTEND.md) ⛔ BLOCKING**
 
 ```bash
+# macOS, Linux, WSL, Git Bash
 test -f .baoyu-skills/article-illustrator-prompts/EXTEND.md && echo "project"
+test -f "${XDG_CONFIG_HOME:-$HOME/.config}/baoyu-skills/article-illustrator-prompts/EXTEND.md" && echo "xdg"
 test -f "$HOME/.baoyu-skills/article-illustrator-prompts/EXTEND.md" && echo "user"
+```
+
+```powershell
+# PowerShell (Windows)
+if (Test-Path .baoyu-skills/article-illustrator-prompts/EXTEND.md) { "project" }
+$xdg = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { "$HOME/.config" }
+if (Test-Path "$xdg/baoyu-skills/article-illustrator-prompts/EXTEND.md") { "xdg" }
+if (Test-Path "$HOME/.baoyu-skills/article-illustrator-prompts/EXTEND.md") { "user" }
 ```
 
 | Result | Action |
@@ -74,13 +89,13 @@ Full procedures: [references/workflow.md](references/workflow.md#step-2-setup--a
 
 ### Step 3: Confirm Settings ⚠️
 
-**ONE AskUserQuestion, max 4 Qs. Q1-Q3 REQUIRED.**
+**ONE AskUserQuestion, max 4 Qs. Q1-Q2 REQUIRED. Q3 required unless preset chosen.**
 
 | Q | Options |
 |---|---------|
-| **Q1: Type** | [Recommended], infographic, scene, flowchart, comparison, framework, timeline, mixed |
+| **Q1: Preset or Type** | [Recommended preset], [alt preset], or manual: infographic, scene, flowchart, comparison, framework, timeline, mixed |
 | **Q2: Density** | minimal (1-2), balanced (3-5), per-section (Recommended), rich (6+) |
-| **Q3: Style** | [Recommended], minimal-flat, sci-fi, hand-drawn, editorial, scene, Other |
+| **Q3: Style** | [Recommended], minimal-flat, sci-fi, hand-drawn, editorial, scene, poster, Other — **skip if preset chosen** |
 | Q4: Language | When article language ≠ EXTEND.md setting |
 
 Full procedures: [references/workflow.md](references/workflow.md#step-3-confirm-settings-)
@@ -107,7 +122,10 @@ Full template: [references/workflow.md](references/workflow.md#step-4-generate-o
 2. Save to `prompts/NN-{type}-{slug}.md` with YAML frontmatter
 3. Prompts **MUST** use type-specific templates with structured sections (ZONES / LABELS / COLORS / STYLE / ASPECT)
 4. LABELS **MUST** include article-specific data: actual numbers, terms, metrics, quotes
-5. Include reference processing if applicable (`direct`/`style`/`palette`)
+5. **Reference Images**: Process reference images if provided
+   - `direct` usage → describe in prompt for image-to-image generation
+   - `style` usage → extract visual traits, append to style section
+   - `palette` usage → extract colors, append to colors section
 
 Full procedures: [references/workflow.md](references/workflow.md#step-5-generate-prompts)
 
@@ -159,5 +177,6 @@ article-illustrator-prompts/{topic-slug}/
 | [references/workflow.md](references/workflow.md) | Detailed procedures |
 | [references/usage.md](references/usage.md) | Command syntax |
 | [references/styles.md](references/styles.md) | Style gallery |
+| [references/style-presets.md](references/style-presets.md) | Preset shortcuts (type + style) |
 | [references/prompt-construction.md](references/prompt-construction.md) | Prompt templates |
 | [references/config/first-time-setup.md](references/config/first-time-setup.md) | First-time setup |

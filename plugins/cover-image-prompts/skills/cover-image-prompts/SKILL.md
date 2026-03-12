@@ -1,7 +1,10 @@
 ---
 name: cover-image-prompts
-description: Generates article cover image prompts with 5 dimensions (type, palette, rendering, text, mood) combining 9 color palettes and 6 rendering styles. Outputs only the generation prompt to a file, not the actual image. Use when user asks to "generate cover prompt", "create cover image prompt", or "make cover prompt".
+description: Generates article cover image prompts with 5 dimensions (type, palette, rendering, text, mood) combining 10 color palettes and 7 rendering styles. Outputs only the generation prompt to a file, not the actual image. Use when user asks to "generate cover prompt", "create cover image prompt", or "make cover prompt".
 disable-model-invocation: true
+version: 1.56.1
+metadata:
+  source: baoyu-skills
 ---
 
 # Cover Image Prompt Generator
@@ -36,8 +39,8 @@ Generate elegant cover image prompts for articles with 5-dimensional customizati
 | Option | Description |
 |--------|-------------|
 | `--type <name>` | hero, conceptual, typography, metaphor, scene, minimal |
-| `--palette <name>` | warm, elegant, cool, dark, earth, vivid, pastel, mono, retro |
-| `--rendering <name>` | flat-vector, hand-drawn, painterly, digital, pixel, chalk |
+| `--palette <name>` | warm, elegant, cool, dark, earth, vivid, pastel, mono, retro, duotone |
+| `--rendering <name>` | flat-vector, hand-drawn, painterly, digital, pixel, chalk, screen-print |
 | `--style <name>` | Preset shorthand (see [Style Presets](references/style-presets.md)) |
 | `--text <level>` | none, title-only, title-subtitle, text-rich |
 | `--mood <level>` | subtle, balanced, bold |
@@ -53,8 +56,8 @@ Generate elegant cover image prompts for articles with 5-dimensional customizati
 | Dimension | Values | Default |
 |-----------|--------|---------|
 | **Type** | hero, conceptual, typography, metaphor, scene, minimal | auto |
-| **Palette** | warm, elegant, cool, dark, earth, vivid, pastel, mono, retro | auto |
-| **Rendering** | flat-vector, hand-drawn, painterly, digital, pixel, chalk | auto |
+| **Palette** | warm, elegant, cool, dark, earth, vivid, pastel, mono, retro, duotone | auto |
+| **Rendering** | flat-vector, hand-drawn, painterly, digital, pixel, chalk, screen-print | auto |
 | **Text** | none, title-only, title-subtitle, text-rich | title-only |
 | **Mood** | subtle, balanced, bold | balanced |
 | **Font** | clean, handwritten, serif, display | clean |
@@ -66,10 +69,10 @@ Auto-selection rules: [references/auto-selection.md](references/auto-selection.m
 **Types**: hero, conceptual, typography, metaphor, scene, minimal
 → Details: [references/types.md](references/types.md)
 
-**Palettes**: warm, elegant, cool, dark, earth, vivid, pastel, mono, retro
+**Palettes**: warm, elegant, cool, dark, earth, vivid, pastel, mono, retro, duotone
 → Details: [references/palettes/](references/palettes/)
 
-**Renderings**: flat-vector, hand-drawn, painterly, digital, pixel, chalk
+**Renderings**: flat-vector, hand-drawn, painterly, digital, pixel, chalk, screen-print
 → Details: [references/renderings/](references/renderings/)
 
 **Text Levels**: none (pure visual) | title-only (default) | title-subtitle | text-rich (with tags)
@@ -129,8 +132,18 @@ Analyze + Save Refs → [Output Dir] → [Confirm: 6 Dimensions] → Prompt → 
 
 Check EXTEND.md existence (priority: project → user):
 ```bash
+# macOS, Linux, WSL, Git Bash
 test -f .baoyu-skills/cover-image-prompts/EXTEND.md && echo "project"
+test -f "${XDG_CONFIG_HOME:-$HOME/.config}/baoyu-skills/cover-image-prompts/EXTEND.md" && echo "xdg"
 test -f "$HOME/.baoyu-skills/cover-image-prompts/EXTEND.md" && echo "user"
+```
+
+```powershell
+# PowerShell (Windows)
+if (Test-Path .baoyu-skills/cover-image-prompts/EXTEND.md) { "project" }
+$xdg = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { "$HOME/.config" }
+if (Test-Path "$xdg/baoyu-skills/cover-image-prompts/EXTEND.md") { "xdg" }
+if (Test-Path "$HOME/.baoyu-skills/cover-image-prompts/EXTEND.md") { "user" }
 ```
 
 | Result | Action |
