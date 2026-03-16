@@ -57,6 +57,12 @@
       "description": "Generates drawing prompts for Xiaohongshu (Little Red Book) infographic series",
       "source": "./plugins/xhs-prompts",
       "strict": false
+    },
+    {
+      "name": "handoff",
+      "description": "Create and manage handoff documents for seamless work continuity. Triggered by 'create handoff', 'save handoff', 'load handoff', '继续工作', etc.",
+      "source": "./plugins/handoff",
+      "strict": false
     }
   ]
 }

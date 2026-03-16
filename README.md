@@ -13,6 +13,7 @@ plugins/
 ├── drawio/                        # Draw.io diagram generation
 ├── felo-search/                   # Felo AI web search
 ├── felo-web-fetch/                # Web page content extraction
+├── handoff/                       # Work continuity & context management
 ├── infographic-prompts/           # Infographic prompts
 ├── searxng/                       # SearXNG metasearch
 └── xhs-prompts/                   # Xiaohongshu prompts
@@ -43,6 +44,9 @@ Then install specific skills:
 
 # Diagram generation
 /plugin install drawio@mazhen-skills
+
+# Context management
+/plugin install handoff@mazhen-skills
 ```
 
 ### Method 2: Direct Install
@@ -84,6 +88,12 @@ The following skills require manual invocation using `/skill-name`:
 | Skill | Description | Command |
 |-------|-------------|---------|
 | **felo-web-fetch** | Extract web page content as markdown, HTML, or plain text | `/felo-web-fetch` |
+
+### Context Management (Auto-triggered)
+
+| Skill | Description | Trigger |
+|-------|-------------|---------|
+| **handoff** | Create and manage handoff documents for seamless work continuity | "create handoff", "save handoff", "继续工作", "load handoff" |
 
 ## Attribution
 
