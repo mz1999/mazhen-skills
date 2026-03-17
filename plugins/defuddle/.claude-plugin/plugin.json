@@ -1,0 +1,9 @@
+{
+  "name": "defuddle",
+  "description": "Extract clean markdown content from web pages using Defuddle with proxy support",
+  "version": "1.0.0",
+  "author": {
+    "name": "mazhen",
+    "email": "mz1999@gmail.com"
+  }
+}

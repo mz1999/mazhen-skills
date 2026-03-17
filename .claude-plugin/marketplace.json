@@ -23,6 +23,12 @@
       "strict": false
     },
     {
+      "name": "defuddle",
+      "description": "Extract clean markdown content from web pages with proxy support",
+      "source": "./plugins/defuddle",
+      "strict": false
+    },
+    {
       "name": "drawio",
       "description": "Generate draw.io diagrams as .drawio files, optionally export to PNG/SVG/PDF with embedded XML",
       "source": "./plugins/drawio",

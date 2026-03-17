@@ -12,6 +12,7 @@ plugins/
 ├── cover-image-prompts/           # Cover image prompts
 ├── drawio/                        # Draw.io diagram generation
 ├── felo-search/                   # Felo AI web search
+├── defuddle/                      # Web page content extraction with proxy
 ├── felo-web-fetch/                # Web page content extraction
 ├── handoff/                       # Work continuity & context management
 ├── infographic-prompts/           # Infographic prompts
@@ -47,6 +48,9 @@ Then install specific skills:
 
 # Context management
 /plugin install handoff@mazhen-skills
+
+# Web content extraction with proxy support
+/plugin install defuddle@mazhen-skills
 ```
 
 ### Method 2: Direct Install
@@ -87,6 +91,7 @@ The following skills require manual invocation using `/skill-name`:
 
 | Skill | Description | Command |
 |-------|-------------|---------|
+| **defuddle** | Extract clean markdown from web pages with proxy support | `defuddle` (auto-triggered on URL) |
 | **felo-web-fetch** | Extract web page content as markdown, HTML, or plain text | `/felo-web-fetch` |
 
 ### Context Management (Auto-triggered)
@@ -111,6 +116,55 @@ The following skills require manual invocation using `/skill-name`:
 ### drawio
 
 `drawio` skill 来自 [drawio-mcp](https://github.com/jgraph/drawio-mcp) 项目，是一个纯提示词类型的 skill，用于生成 draw.io 图表文件。
+
+## Maintenance
+
+### Defuddle Skill Updates
+
+The `defuddle` skill includes a pre-built version of [mz1999/defuddle](https://github.com/mz1999/defuddle) (a fork with proxy support). The built files are located in `plugins/defuddle/skills/defuddle/scripts/dist/`.
+
+#### Version History
+
+| Skill Version | Defuddle Version | Date | Changes |
+|---------------|------------------|------|---------|
+| 1.0.0 | 0.14.0 | 2025-03-17 | Initial release with proxy support via `DEFUDDLE_PROXY` |
+
+#### Quick Update (Using Script)
+
+```bash
+cd scripts
+./update-defuddle.sh
+```
+
+This script will:
+1. Clone the latest defuddle from GitHub
+2. Install dependencies and build
+3. Copy `dist/` files to the skill
+4. Display the version number
+
+After running the script:
+1. Test: `export DEFUDDLE_PROXY=http://proxy:port && node defuddle.mjs parse https://example.com --md`
+2. Update the version table above
+3. Commit: `git add dist/ && git commit -m "Update defuddle to X.X.X"`
+
+#### Manual Update
+
+If the script doesn't work:
+
+```bash
+# 1. Clone and build
+cd /tmp
+git clone --depth 1 https://github.com/mz1999/defuddle.git
+cd defuddle
+npm install
+npm run build
+
+# 2. Copy dist files
+rm -rf /path/to/mazhen-skills/plugins/defuddle/skills/defuddle/scripts/dist
+cp -r dist /path/to/mazhen-skills/plugins/defuddle/skills/defuffle/scripts/
+
+# 3. Update version table in README and commit
+```
 
 ## Documentation
 
