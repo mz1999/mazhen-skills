@@ -5,70 +5,50 @@ description: Extract clean markdown content from web pages using Defuddle CLI wi
 
 # Defuddle
 
-Extract clean readable content from web pages using Defuddle. Prefer over WebFetch for standard web pages — it removes navigation, ads, and clutter, reducing token usage.
-
-## When to Use
-
-Trigger this skill when the user provides a URL to read or analyze:
-
-- Extract article content from URLs
-- Convert web pages to clean markdown
-- Read online documentation, articles, blog posts
-- Any standard web page content extraction
+Extract clean readable content from web pages using Defuddle CLI with HTTP proxy support. Prefer over WebFetch for standard web pages — it removes navigation, ads, and clutter, reducing token usage.
 
 ## Installation
 
-Dependencies are installed automatically on first use. If you need to install manually:
-
 ```bash
-cd scripts && npm install
+npm install -g @mz1999/defuddle
 ```
 
 ## Usage
 
-The wrapper script handles dependency checks automatically.
-
 ### Basic Fetch (Markdown)
 
 ```bash
-./scripts/defuddle.sh parse <url> --md
+defuddle parse <url> --md
 ```
 
 ### Output as JSON with metadata
 
 ```bash
-./scripts/defuddle.sh parse <url> --json
+defuddle parse <url> --json
 ```
 
 ### Extract specific property
 
 ```bash
-./scripts/defuddle.sh parse <url> -p title
-./scripts/defuddle.sh parse <url> -p description
-./scripts/defuddle.sh parse <url> -p domain
+defuddle parse <url> -p title
+defuddle parse <url> -p description
+defuddle parse <url> -p domain
 ```
 
 ### Save to file
 
 ```bash
-./scripts/defuddle.sh parse <url> --md -o content.md
+defuddle parse <url> --md -o content.md
 ```
 
-## Configuration
+## Proxy Support
 
-### Proxy Support (Optional)
-
-Defuddle supports HTTP/HTTPS proxies via the `DEFUDDLE_PROXY` environment variable:
+Defuddle supports HTTP/HTTPS proxies via the `DEFUDDLE_PROXY` environment variable.
 
 ```bash
-# Set proxy via environment variable
 export DEFUDDLE_PROXY=http://proxy.example.com:8080
-
-# Then parse URL through proxy
-./scripts/defuddle.sh parse https://example.com/article --md
+defuddle parse https://example.com/article --md
 ```
-
-Proxy errors are silently ignored unless `--debug` is enabled.
 
 ## Output Formats
 
