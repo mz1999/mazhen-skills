@@ -1,6 +1,7 @@
 ---
 name: felo-web-fetch
 description: "Extract web page content as markdown, HTML, or plain text using Felo AI. Triggers on /felo-web-fetch command only."
+version: 2.1.0
 ---
 
 # Felo Web Fetch Skill

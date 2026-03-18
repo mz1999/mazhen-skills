@@ -1,6 +1,7 @@
 ---
 name: drawio
 description: Generate draw.io diagrams as .drawio files, optionally export to PNG/SVG/PDF with embedded XML
+version: 2.1.0
 allowed-tools: Bash, Write
 disable-model-invocation: true
 ---

@@ -1,6 +1,7 @@
 ---
 name: searxng
 description: Privacy-respecting metasearch using your authenticated SearXNG instance. Search the web with HTTP Basic Auth protection. Use when user asks to "search for", "search web", "find information", or "look up" anything online.
+version: 2.1.0
 ---
 
 # SearXNG Search with Authentication

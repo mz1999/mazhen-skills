@@ -1,6 +1,7 @@
 ---
 name: handoff
 description: Create and manage handoff documents for seamless work continuity. Triggered when user says 'create handoff', 'save handoff', '记录上下文', 'load handoff', '继续工作', or 'resume work'. Helps preserve context across AI sessions.
+version: 2.1.0
 ---
 
 # Handoff - 工作状态记录与恢复

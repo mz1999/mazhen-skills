@@ -1,6 +1,7 @@
 ---
 name: defuddle
 description: Extract clean markdown content from web pages using Defuddle CLI with proxy support. Prefer over WebFetch for standard web pages — it removes navigation, ads, and clutter, reducing token usage.
+version: 2.1.0
 ---
 
 # Defuddle
