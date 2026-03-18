@@ -10,7 +10,7 @@ Extract clean readable content from web pages using Defuddle CLI with HTTP proxy
 
 ## Prerequisites
 
-Before using this skill, ensure `defuddle` CLI is installed. Check by running `which defuddle` or `defuddle --version`.
+Before using this skill, ensure `defuddle-proxy` CLI is installed. Check by running `which defuddle-proxy` or `defuddle-proxy --version`.
 
 If not installed, install it automatically for the user:
 
@@ -18,34 +18,34 @@ If not installed, install it automatically for the user:
 npm install -g @mz1999/defuddle
 ```
 
-**Note:** The skill should handle installation automatically if defuddle is not found. Always check first, then install if needed.
+**Note:** The skill should handle installation automatically if defuddle-proxy is not found. Always check first, then install if needed.
 
 ## Usage
 
 ### Basic Fetch (Markdown)
 
 ```bash
-defuddle parse <url> --md
+defuddle-proxy parse <url> --md
 ```
 
 ### Output as JSON with metadata
 
 ```bash
-defuddle parse <url> --json
+defuddle-proxy parse <url> --json
 ```
 
 ### Extract specific property
 
 ```bash
-defuddle parse <url> -p title
-defuddle parse <url> -p description
-defuddle parse <url> -p domain
+defuddle-proxy parse <url> -p title
+defuddle-proxy parse <url> -p description
+defuddle-proxy parse <url> -p domain
 ```
 
 ### Save to file
 
 ```bash
-defuddle parse <url> --md -o content.md
+defuddle-proxy parse <url> --md -o content.md
 ```
 
 ## Proxy Support
@@ -54,7 +54,7 @@ Defuddle supports HTTP/HTTPS proxies via the `DEFUDDLE_PROXY` environment variab
 
 ```bash
 export DEFUDDLE_PROXY=http://proxy.example.com:8080
-defuddle parse https://example.com/article --md
+defuddle-proxy parse https://example.com/article --md
 ```
 
 ## Output Formats
