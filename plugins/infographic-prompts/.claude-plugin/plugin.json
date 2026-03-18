@@ -1,7 +1,7 @@
 {
   "name": "infographic-prompts",
   "description": "Generates professional infographic drawing prompts with 21 layout types and 20 visual styles. Analyzes content, recommends layout×style combinations, and outputs ready-to-use image generation prompts.",
-  "version": "1.0.0",
+  "version": "1.56.1",
   "author": {
     "name": "mazhen",
     "email": "mz1999@gmail.com"
