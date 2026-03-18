@@ -8,11 +8,17 @@ version: 2.1.0
 
 Extract clean readable content from web pages using Defuddle CLI with HTTP proxy support. Prefer over WebFetch for standard web pages — it removes navigation, ads, and clutter, reducing token usage.
 
-## Installation
+## Prerequisites
+
+Before using this skill, ensure `defuddle` CLI is installed. Check by running `which defuddle` or `defuddle --version`.
+
+If not installed, install it automatically for the user:
 
 ```bash
 npm install -g @mz1999/defuddle
 ```
+
+**Note:** The skill should handle installation automatically if defuddle is not found. Always check first, then install if needed.
 
 ## Usage
 
