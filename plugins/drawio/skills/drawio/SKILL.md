@@ -1,7 +1,7 @@
 ---
 name: drawio
-description: Generate draw.io diagrams as .drawio files, optionally export to PNG/SVG/PDF with embedded XML
-version: 2.1.0
+description: Generate draw.io diagrams as .drawio files, optionally export to PNG/SVG/PDF with embedded XML. Use when user asks to 'create a diagram', 'draw a flowchart', 'make an architecture diagram', 'generate an ER diagram', 'sequence diagram', 'class diagram', 'network diagram', or mentions draw.io, .drawio files, or diagram export to PNG/SVG/PDF.
+version: 2.2.0
 allowed-tools: Bash, Write
 disable-model-invocation: true
 ---
@@ -14,8 +14,8 @@ Generate draw.io diagrams as native `.drawio` files. Optionally export to PNG, S
 
 1. **Generate draw.io XML** in mxGraphModel format for the requested diagram
 2. **Write the XML** to a `.drawio` file in the current working directory using the Write tool
-3. **If the user requested an export format** (png, svg, pdf), export using the draw.io CLI with `--embed-diagram`, then delete the source `.drawio` file
-4. **Open the result** — the exported file if exported, or the `.drawio` file otherwise
+3. **If the user requested an export format** (png, svg, pdf), locate the draw.io CLI (see below), export with `--embed-diagram`, then delete the source `.drawio` file. If the CLI is not found, keep the `.drawio` file and tell the user they can install the draw.io desktop app to enable export, or open the `.drawio` file directly
+4. **Open the result** — the exported file if exported, or the `.drawio` file otherwise. If the open command fails, print the file path so the user can open it manually
 
 ## Choosing the output format
 
@@ -45,13 +45,53 @@ The draw.io desktop app includes a command-line interface for exporting.
 
 ### Locating the CLI
 
-Try `drawio` first (works if on PATH), then fall back to the platform-specific path:
+First, detect the environment, then locate the CLI accordingly:
 
-- **macOS**: `/Applications/draw.io.app/Contents/MacOS/draw.io`
-- **Linux**: `drawio` (typically on PATH via snap/apt/flatpak)
-- **Windows**: `"C:\Program Files\draw.io\draw.io.exe"`
+#### WSL2 (Windows Subsystem for Linux)
 
-Use `which drawio` (or `where drawio` on Windows) to check if it's on PATH before falling back.
+WSL2 is detected when `/proc/version` contains `microsoft` or `WSL`:
+
+```bash
+grep -qi microsoft /proc/version 2>/dev/null && echo "WSL2"
+```
+
+On WSL2, use the Windows draw.io Desktop executable via `/mnt/c/...`:
+
+```bash
+DRAWIO_CMD=`/mnt/c/Program Files/draw.io/draw.io.exe`
+```
+
+The backtick quoting is required to handle the space in `Program Files` in bash.
+
+If draw.io is installed in a non-default location, check common alternatives:
+
+```bash
+# Default install path
+`/mnt/c/Program Files/draw.io/draw.io.exe`
+
+# Per-user install (if the above does not exist)
+`/mnt/c/Users/$WIN_USER/AppData/Local/Programs/draw.io/draw.io.exe`
+```
+
+#### macOS
+
+```bash
+/Applications/draw.io.app/Contents/MacOS/draw.io
+```
+
+#### Linux (native)
+
+```bash
+drawio   # typically on PATH via snap/apt/flatpak
+```
+
+#### Windows (native, non-WSL2)
+
+```
+"C:\Program Files\draw.io\draw.io.exe"
+```
+
+Use `which drawio` (or `where drawio` on Windows) to check if it's on PATH before falling back to the platform-specific path.
 
 ### Export command
 
@@ -73,9 +113,22 @@ Key flags:
 
 ### Opening the result
 
-- **macOS**: `open <file>`
-- **Linux**: `xdg-open <file>`
-- **Windows**: `start <file>`
+| Environment | Command |
+|-------------|---------|
+| macOS | `open <file>` |
+| Linux (native) | `xdg-open <file>` |
+| WSL2 | `cmd.exe /c start "" "$(wslpath -w <file>)"` |
+| Windows | `start <file>` |
+
+**WSL2 notes:**
+- `wslpath -w <file>` converts a WSL2 path (e.g. `/home/user/diagram.drawio`) to a Windows path (e.g. `C:\Users\...`). This is required because `cmd.exe` cannot resolve `/mnt/c/...` style paths.
+- The empty string `""` after `start` is required to prevent `start` from interpreting the filename as a window title.
+
+**WSL2 example:**
+
+```bash
+cmd.exe /c start "" "$(wslpath -w diagram.drawio)"
+```
 
 ## File naming
 
@@ -93,7 +146,7 @@ A `.drawio` file is native mxGraphModel XML. Always generate XML directly — Me
 Every diagram must have this structure:
 
 ```xml
-<mxGraphModel>
+<mxGraphModel adaptiveColors="auto">
   <root>
     <mxCell id="0"/>
     <mxCell id="1" parent="0"/>
@@ -105,6 +158,8 @@ Every diagram must have this structure:
 - Cell `id="0"` is the root layer
 - Cell `id="1"` is the default parent layer
 - All diagram elements use `parent="1"` unless using multiple layers
+
+Consult `references/xml-reference.md` for common styles, style properties, edge routing details (including waypoints), and container/group examples.
 
 ### Common styles
 
@@ -188,6 +243,9 @@ draw.io does **not** have built-in collision detection for edges. Plan layout an
 - Use `rounded=1` on edges for cleaner bends
 - Use `jettySize=auto` for better port spacing on orthogonal edges
 - Align all nodes to a grid (multiples of 10)
+- **Edge labels**: Do NOT wrap edge labels in HTML markup to reduce font size. The default font size for edge labels is already 11px (vs 12px for vertices), so they are already smaller. Just set the `value` attribute directly.
+
+See `references/xml-reference.md` for full edge routing and container guidance.
 
 ## Containers and groups
 
@@ -236,11 +294,35 @@ Set `parent="containerId"` on child cells. Children use **relative coordinates**
 </mxCell>
 ```
 
+## Dark mode colors
+
+draw.io supports automatic dark mode rendering. How colors behave depends on the property:
+
+- **`strokeColor`, `fillColor`, `fontColor`** default to `"default"`, which renders as black in light theme and white in dark theme. When no explicit color is set, colors adapt automatically.
+- **Explicit colors** (e.g. `fillColor=#DAE8FC`) specify the light-mode color. The dark-mode color is computed automatically by inverting the RGB values (blending toward the inverse at 93%) and rotating the hue by 180° (via `mxUtils.getInverseColor`).
+- **`light-dark()` function** — To specify both colors explicitly, use `light-dark(lightColor,darkColor)` in the style string, e.g. `fontColor=light-dark(#7EA6E0,#FF0000)`. The first argument is used in light mode, the second in dark mode.
+
+To enable dark mode color adaptation, the `mxGraphModel` element must include `adaptiveColors="auto"`.
+
+When generating diagrams, you generally do not need to specify dark-mode colors — the automatic inversion handles most cases. Use `light-dark()` only when the automatic inverse color is unsatisfactory.
+
 ## Style reference
 
 For the complete draw.io style reference: https://www.drawio.com/doc/faq/drawio-style-reference.html
 
 For the XML Schema Definition (XSD): https://www.drawio.com/assets/mxfile.xsd
+
+See also: `references/xml-reference.md` for common styles, edge routing, and container examples.
+
+## Troubleshooting
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| draw.io CLI not found | Desktop app not installed or not on PATH | Keep the `.drawio` file and tell the user to install the draw.io desktop app, or open the file manually |
+| Export produces empty/corrupt file | Invalid XML (e.g. double hyphens in comments, unescaped special characters) | Validate XML well-formedness before writing; see the XML well-formedness section below |
+| Diagram opens but looks blank | Missing root cells `id="0"` and `id="1"` | Ensure the basic mxGraphModel structure is complete |
+| Edges not rendering | Edge mxCell is self-closing (no child mxGeometry element) | Every edge must have `<mxGeometry relative="1" as="geometry" />` as a child element |
+| File won't open after export | Incorrect file path or missing file association | Print the absolute file path so the user can open it manually |
 
 ## CRITICAL: XML well-formedness
 

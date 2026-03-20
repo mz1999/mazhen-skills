@@ -65,3 +65,11 @@ A `.drawio` file is just mxGraphModel XML. Mermaid and CSV formats require draw.
 - No server dependency
 - No conversion step
 - Files are immediately editable in draw.io
+
+## Other Variants
+
+This skill is based on the upstream [drawio-mcp](https://github.com/mz1999/drawio-mcp) repository, which offers multiple ways to integrate draw.io with AI assistants:
+
+- **MCP App Server** — Inline diagrams in chat (Claude.ai, VS Code)
+- **MCP Tool Server** — Opens diagrams in browser via MCP (Claude Desktop)
+- **Project Instructions** — Claude.ai Projects, no install needed
