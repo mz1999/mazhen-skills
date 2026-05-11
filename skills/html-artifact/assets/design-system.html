@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design System — Visual Constitution</title>
+<style>
+  /* ================================================================
+     VISUAL CONSTITUTION — Design Tokens
+     Copy this :root block into every HTML artifact you generate.
+     ================================================================ */
+  :root {
+    /* --- Palette --- */
+    --ivory:    #FAF9F5;   /* page background */
+    --slate:    #141413;   /* primary text / headings */
+    --clay:     #D97757;   /* accent / CTA / warning */
+    --clay-d:   #B85C3E;   /* accent dark */
+    --oat:      #E3DACC;   /* secondary bg / tags */
+    --olive:    #788C5D;   /* success / positive */
+    --sky:      #6A8CAF;   /* info / neutral */
+    --rust:     #B04A3F;   /* error / danger */
+
+    /* --- Grays --- */
+    --gray-50:  #F0EEE6;   /* card bg / code bg */
+    --gray-100: #F0EEE6;   /* alias */
+    --gray-150: #F0EEE6;   /* alias */
+    --gray-200: #D1CFC5;   /* borders */
+    --gray-300: #D1CFC5;   /* alias */
+    --gray-500: #87867F;   /* secondary text */
+    --gray-700: #3D3D3A;   /* body text */
+    --gray-800: #3D3D3A;   /* alias */
+    --white:    #FFFFFF;   /* card surface */
+
+    /* --- Typography --- */
+    --serif: ui-serif, Georgia, 'Times New Roman', serif;
+    --sans:  system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --mono:  ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+    /* --- Geometry --- */
+    --radius-panel: 12px;
+    --radius-row:    8px;
+    --radius-pill: 999px;
+    --border: 1.5px solid var(--gray-300);
+  }
+
+  /* ================================================================
+     Base Reset (copy into every artifact)
+     ================================================================ */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--sans);
+    background: var(--ivory);
+    color: var(--slate);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    padding: 56px 24px 96px;
+  }
+  .page {
+    max-width: 980px;
+    margin: 0 auto;
+  }
+
+  /* ================================================================
+     Typography Scale
+     ================================================================ */
+  .t-display { font-family: var(--serif); font-size: clamp(36px, 5vw, 48px); line-height: 1.08; font-weight: 500; letter-spacing: -0.02em; }
+  .t-h1      { font-family: var(--serif); font-size: clamp(28px, 3.5vw, 40px); line-height: 1.15; font-weight: 500; letter-spacing: -0.01em; }
+  .t-h2      { font-family: var(--serif); font-size: clamp(22px, 2.5vw, 26px); line-height: 1.2;  font-weight: 500; }
+  .t-h3      { font-family: var(--serif); font-size: 20px; line-height: 1.25; font-weight: 500; }
+  .t-body    { font-family: var(--sans);  font-size: 15px; line-height: 1.55; font-weight: 430; }
+  .t-small   { font-family: var(--sans);  font-size: 14px; line-height: 1.5;  font-weight: 430; }
+  .t-caption { font-family: var(--sans);  font-size: 12px; line-height: 1.4;  font-weight: 500; color: var(--gray-500); }
+  .t-mono    { font-family: var(--mono);  font-size: 12px; line-height: 1.5;  letter-spacing: 0.01em; }
+  .t-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+  }
+
+  /* ================================================================
+     Layout Patterns
+     ================================================================ */
+  /* Centered content column */
+  .layout-single { max-width: 760px; margin: 0 auto; }
+
+  /* Two-column: content + sidebar */
+  .layout-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 32px;
+    align-items: start;
+  }
+  @media (max-width: 960px) {
+    .layout-split { grid-template-columns: 1fr; }
+    .layout-split aside { position: static !important; }
+  }
+
+  /* Three-column comparison */
+  .layout-tri {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 28px;
+  }
+  @media (max-width: 1100px) {
+    .layout-tri { grid-template-columns: 1fr; }
+  }
+
+  /* Four-column grid */
+  .layout-quad {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px;
+  }
+  @media (max-width: 920px) {
+    .layout-quad { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* Card grid auto-fill */
+  .layout-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  /* Sticky sidebar */
+  .sticky { position: sticky; top: 24px; }
+
+  /* ================================================================
+     Components
+     ================================================================ */
+
+  /* --- Panel / Card --- */
+  .panel {
+    background: var(--white);
+    border: var(--border);
+    border-radius: var(--radius-panel);
+    padding: 24px;
+  }
+  .panel-subtle {
+    background: var(--gray-50);
+    border: var(--border);
+    border-radius: var(--radius-panel);
+    padding: 16px 20px;
+  }
+
+  /* --- Code Block --- */
+  .code-block {
+    background: var(--slate);
+    border-radius: var(--radius-panel);
+    padding: 18px 20px;
+    overflow-x: auto;
+  }
+  .code-block pre {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #E8E6DE;
+    white-space: pre;
+  }
+  .code-block .kw  { color: var(--clay); }   /* keyword */
+  .code-block .str { color: var(--olive); }  /* string */
+  .code-block .cm  { color: var(--gray-500); } /* comment */
+  .code-block .fn  { color: #C9B98A; }       /* identifier */
+
+  /* --- Inline Code --- */
+  code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--gray-50);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  /* --- Chip / Tag --- */
+  .chip {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    background: var(--gray-50);
+    border: var(--border);
+    color: var(--gray-700);
+    padding: 5px 10px;
+    border-radius: var(--radius-row);
+    white-space: nowrap;
+    display: inline-block;
+  }
+  .chip-strong { color: var(--slate); font-weight: 600; }
+
+  /* --- Button --- */
+  .btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: var(--radius-pill);
+    padding: 9px 16px;
+    transition: background 140ms ease, transform 80ms ease, border-color 140ms ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary {
+    background: var(--slate);
+    color: var(--ivory);
+    border: 1.5px solid var(--slate);
+  }
+  .btn-primary:hover { background: var(--gray-800); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--gray-800);
+    border: 1.5px solid var(--gray-200);
+  }
+  .btn-ghost:hover { border-color: var(--gray-500); color: var(--slate); }
+
+  /* --- Toggle Switch (pure CSS) --- */
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .toggle .track {
+    width: 36px;
+    height: 20px;
+    background: var(--gray-200);
+    border-radius: var(--radius-pill);
+    position: relative;
+    transition: background 150ms ease;
+  }
+  .toggle .track::after {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    background: var(--white);
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: transform 150ms ease;
+  }
+  .toggle input:checked + .track { background: var(--olive); }
+  .toggle input:checked + .track::after { transform: translateX(16px); }
+
+  /* --- Table --- */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--gray-300);
+  }
+  .data-table th {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--gray-500);
+    background: var(--gray-50);
+  }
+
+  /* --- Timeline --- */
+  .timeline {
+    position: relative;
+    padding-left: 24px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 5px; top: 4px; bottom: 4px;
+    width: 1.5px;
+    background: var(--gray-300);
+  }
+  .timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -20px; top: 4px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--clay);
+    border: 2px solid var(--ivory);
+  }
+
+  /* --- Diff --- */
+  .diff .del { background: rgba(176,74,63,0.08); color: var(--rust); }
+  .diff .ins { background: rgba(120,140,93,0.08); color: var(--olive); }
+  .diff .ctx { color: var(--gray-700); }
+
+  /* --- Status indicators --- */
+  .status-ok    { color: var(--olive); }
+  .status-warn  { color: var(--clay); }
+  .status-err   { color: var(--rust); }
+  .dot-ok::before,
+  .dot-warn::before,
+  .dot-err::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: 2px;
+  }
+  .dot-ok::before   { background: var(--olive); }
+  .dot-warn::before { background: var(--clay); }
+  .dot-err::before  { background: var(--rust); }
+
+  /* --- Banner / Alert --- */
+  .banner {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1.5px solid #E8C2AE;
+    background: #F8E9E0;
+    color: var(--clay-d);
+    border-radius: 10px;
+    font-size: 13px;
+  }
+
+  /* --- Toolbar (sticky) --- */
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--ivory);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0 12px;
+    margin-bottom: 14px;
+    border-bottom: 1.5px solid var(--gray-200);
+  }
+  .toolbar .spacer { flex: 1; }
+
+  /* ================================================================
+     Utility
+     ================================================================ */
+  .mb-sm  { margin-bottom: 12px; }
+  .mb-md  { margin-bottom: 24px; }
+  .mb-lg  { margin-bottom: 48px; }
+  .mb-xl  { margin-bottom: 64px; }
+  .text-muted { color: var(--gray-500); }
+  .text-center { text-align: center; }
+
+  /* ================================================================
+     This page's showcase styles (not needed in artifacts)
+     ================================================================ */
+  header { margin-bottom: 48px; }
+  section { margin-bottom: 64px; }
+  h2 { font-family: var(--serif); font-weight: 500; font-size: 26px; margin: 0 0 8px; }
+  hr.rule { border: none; border-top: 1px solid var(--gray-300); margin: 0 0 28px; }
+
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 16px;
+  }
+  .swatch .chip {
+    width: 100%; height: 64px;
+    border-radius: var(--radius-row);
+    border: var(--border);
+    margin-bottom: 6px;
+  }
+  .swatch .token { font-family: var(--mono); font-size: 11px; color: var(--gray-500); }
+  .swatch .hex   { font-family: var(--mono); font-size: 12px; color: var(--gray-700); }
+
+  .demo-box {
+    background: var(--white);
+    border: var(--border);
+    border-radius: var(--radius-panel);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .demo-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--gray-500);
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="t-eyebrow mb-sm">Visual Constitution</div>
+    <h1 class="t-h1" style="margin-bottom:10px;">Design System Reference</h1>
+    <p class="t-small text-muted" style="max-width:640px;">
+      Copy the <code>:root</code> block and component classes below into every HTML artifact.
+      This ensures all your Claude-generated documents share one visual language.
+    </p>
+  </header>
+
+  <!-- ================================================================ -->
+  <section>
+    <h2>Palette</h2>
+    <hr class="rule">
+    <div class="swatch-grid mb-md">
+      <div class="swatch"><div class="chip" style="background:var(--ivory);"></div><span class="token">--ivory</span><span class="hex">#FAF9F5</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--slate);"></div><span class="token">--slate</span><span class="hex">#141413</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--clay);"></div><span class="token">--clay</span><span class="hex">#D97757</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--clay-d);"></div><span class="token">--clay-d</span><span class="hex">#B85C3E</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--oat);"></div><span class="token">--oat</span><span class="hex">#E3DACC</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--olive);"></div><span class="token">--olive</span><span class="hex">#788C5D</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--sky);"></div><span class="token">--sky</span><span class="hex">#6A8CAF</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--rust);"></div><span class="token">--rust</span><span class="hex">#B04A3F</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--gray-50);"></div><span class="token">--gray-50</span><span class="hex">#F0EEE6</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--gray-200);"></div><span class="token">--gray-200</span><span class="hex">#D1CFC5</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--gray-500);"></div><span class="token">--gray-500</span><span class="hex">#87867F</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--gray-700);"></div><span class="token">--gray-700</span><span class="hex">#3D3D3A</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--white); border-color:var(--gray-200);"></div><span class="token">--white</span><span class="hex">#FFFFFF</span></div>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <section>
+    <h2>Typography</h2>
+    <hr class="rule">
+    <div class="panel mb-md">
+      <div class="t-display mb-sm">Display — serif, 48px</div>
+      <div class="t-h1 mb-sm">Heading 1 — serif, 40px</div>
+      <div class="t-h2 mb-sm">Heading 2 — serif, 26px</div>
+      <div class="t-h3 mb-sm">Heading 3 — serif, 20px</div>
+      <div class="t-body mb-sm">Body — sans, 15px, line-height 1.55. The quick brown fox jumps over the lazy dog.</div>
+      <div class="t-small mb-sm">Small — sans, 14px. Used for secondary descriptions and metadata.</div>
+      <div class="t-caption mb-sm">Caption — sans, 12px, muted. Labels, hints, and auxiliary text.</div>
+      <div class="t-mono">Mono — 12px. Used for code, tokens, and data labels.</div>
+    </div>
+    <p class="t-caption">Font stack: serif = Georgia; sans = system-ui; mono = SF Mono / Menlo</p>
+  </section>
+
+  <!-- ================================================================ -->
+  <section>
+    <h2>Layout Patterns</h2>
+    <hr class="rule">
+    <div class="demo-box">
+      <div class="demo-label">.layout-single — max-width 760px, centered</div>
+      <div style="background:var(--gray-50); border:var(--border); border-radius:var(--radius-row); padding:12px; text-align:center; color:var(--gray-500);">Narrow reading column</div>
+    </div>
+    <div class="demo-box">
+      <div class="demo-label">.layout-split — content + 300px sidebar</div>
+      <div style="display:grid; grid-template-columns:1fr 120px; gap:12px;">
+        <div style="background:var(--gray-50); border:var(--border); border-radius:var(--radius-row); padding:12px; text-align:center; color:var(--gray-500);">Main</div>
+        <div style="background:var(--gray-50); border:var(--border); border-radius:var(--radius-row); padding:12px; text-align:center; color:var(--gray-500);">Side</div>
+      </div>
+    </div>
+    <div class="demo-box">
+      <div class="demo-label">.layout-tri — 3-column comparison</div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+        <div style="background:var(--gray-50); border:var(--border); border-radius:var(--radius-row); padding:12px; text-align:center; color:var(--gray-500);">A</div>
+        <div style="background:var(--gray-50); border:var(--border); border-radius:var(--radius-row); padding:12px; text-align:center; color:var(--gray-500);">B</div>
+        <div style="background:var(--gray-50); border:var(--border); border-radius:var(--radius-row); padding:12px; text-align:center; color:var(--gray-500);">C</div>
+      </div>
+    </div>
+    <p class="t-caption">Responsive breakpoints: 1100px (tri→single), 960px (split→stack), 920px (quad→2-col)</p>
+  </section>
+
+  <!-- ================================================================ -->
+  <section>
+    <h2>Components</h2>
+    <hr class="rule">
+
+    <div class="demo-box">
+      <div class="demo-label">.panel — card surface</div>
+      <div class="panel" style="max-width:400px;">
+        <div class="t-h3 mb-sm">Card Title</div>
+        <p class="t-small text-muted">Card content goes here. White background, 1.5px border, 12px radius.</p>
+      </div>
+    </div>
+
+    <div class="demo-box">
+      <div class="demo-label">.code-block — syntax highlighted</div>
+      <div class="code-block" style="max-width:500px;"><pre><span class="kw">const</span> greeting = <span class="str">"hello"</span>; <span class="cm">// inline comment</span>
+<span class="fn">console</span>.log(greeting);</pre></div>
+    </div>
+
+    <div class="demo-box">
+      <div class="demo-label">.chip + .btn-primary + .btn-ghost</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <span class="chip">bundle: <span class="chip-strong">+0kb</span></span>
+        <span class="chip">testability: <span class="chip-strong">high</span></span>
+        <button class="btn btn-primary">Primary</button>
+        <button class="btn btn-ghost">Ghost</button>
+      </div>
+    </div>
+
+    <div class="demo-box">
+      <div class="demo-label">.toggle — pure CSS switch</div>
+      <label class="toggle">
+        <input type="checkbox" checked>
+        <span class="track"></span>
+        <span class="t-small">Enable feature</span>
+      </label>
+    </div>
+
+    <div class="demo-box">
+      <div class="demo-label">.banner — warning alert</div>
+      <div class="banner">
+        <span>⚠️</span>
+        <span>This is a demo banner — replace with your own warning message.</span>
+      </div>
+    </div>
+
+    <div class="demo-box">
+      <div class="demo-label">.timeline</div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="t-small"><strong>14:32</strong> — Error rate spike detected</div>
+        </div>
+        <div class="timeline-item">
+          <div class="t-small"><strong>14:35</strong> — PagerDuty triggered</div>
+        </div>
+        <div class="timeline-item">
+          <div class="t-small"><strong>14:42</strong> — Rollback initiated</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <section>
+    <h2>How to Use</h2>
+    <hr class="rule">
+    <div class="panel">
+      <p class="t-body mb-md">
+        Save this file as <code>design-system.html</code> in your project root.
+        When asking Claude to generate a new HTML artifact, include it as reference:
+      </p>
+      <div class="code-block mb-md"><pre>Using design-system.html as the visual reference,
+create a single-file HTML artifact that [your goal].
+
+Requirements:
+- Copy the :root token block exactly
+- Use .panel for card surfaces
+- Use .t-h1 / .t-h2 / .t-body for typography
+- Use .layout-tri for side-by-side comparisons
+- Keep it responsive (mobile-friendly)
+- No external dependencies</pre></div>
+      <p class="t-caption">
+        Claude will inherit the color palette, fonts, spacing, and component styles automatically.
+      </p>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

@@ -1,9 +1,0 @@
-{
-  "name": "xhs-prompts",
-  "description": "Generates drawing prompts for Xiaohongshu (Little Red Book) infographic series with 10 visual styles and 8 layouts. Breaks content into 1-10 cartoon-style image prompts optimized for XHS engagement.",
-  "version": "1.56.1",
-  "author": {
-    "name": "mazhen",
-    "email": "mz1999@gmail.com"
-  }
-}

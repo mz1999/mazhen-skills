@@ -1,9 +1,0 @@
-{
-  "name": "article-illustrator-prompts",
-  "description": "Analyzes article structure, identifies positions requiring visual aids, and generates illustration prompts using Type × Style two-dimension approach. Outputs ready-to-use drawing prompts without generating actual images.",
-  "version": "1.56.1",
-  "author": {
-    "name": "mazhen",
-    "email": "mz1999@gmail.com"
-  }
-}

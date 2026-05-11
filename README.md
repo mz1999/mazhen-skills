@@ -1,125 +1,46 @@
 # Mazhen Skills
 
-Personal skills collection for Claude Code.
+Personal skills collection for Claude Code and other compatible agents.
 
-## Structure
-
-Each skill is packaged as an independent plugin in the `plugins/` directory:
-
-```
-plugins/
-├── article-illustrator-prompts/   # Article illustration prompts
-├── cover-image-prompts/           # Cover image prompts
-├── drawio/                        # Draw.io diagram generation
-├── felo-search/                   # Felo AI web search
-├── defuddle/                      # Web page content extraction with proxy
-├── felo-web-fetch/                # Web page content extraction
-├── handoff/                       # Work continuity & context management
-├── infographic-prompts/           # Infographic prompts
-├── searxng/                       # SearXNG metasearch
-└── xhs-prompts/                   # Xiaohongshu prompts
-```
-
-This structure allows each skill to be installed and enabled independently.
-
-## Installation
-
-### Method 1: Add to Plugin Marketplace (Recommended)
+## Install
 
 ```bash
-/plugin marketplace add mz1999/mazhen-skills
+npx skills add mz1999/mazhen-skills
 ```
 
-Then install specific skills:
+Or install specific skills:
 
 ```bash
-# Search skills
-/plugin install searxng@mazhen-skills
-/plugin install felo-search@mazhen-skills
-
-# Content generation prompts
-/plugin install xhs-prompts@mazhen-skills
-/plugin install infographic-prompts@mazhen-skills
-/plugin install cover-image-prompts@mazhen-skills
-/plugin install article-illustrator-prompts@mazhen-skills
-
-# Diagram generation
-/plugin install drawio@mazhen-skills
-
-# Context management
-/plugin install handoff@mazhen-skills
-
-# Web content extraction with proxy support
-/plugin install defuddle@mazhen-skills
+npx skills add mz1999/mazhen-skills --skill gc-log-analyzer
+npx skills add mz1999/mazhen-skills --skill html-artifact
 ```
 
-### Method 2: Direct Install
+## Skills
 
-```bash
-/plugin install searxng@mz1999/mazhen-skills
-```
-
-## Available Skills
-
-### Search Skills (Auto-triggered)
-
-The following skills are automatically triggered when Claude detects a relevant request:
+### DevOps & Observability
 
 | Skill | Description |
 |-------|-------------|
-| **searxng** | Privacy-respecting metasearch using authenticated SearXNG instance |
-| **felo** | AI-powered conversational search with real-time web results |
+| **gc-log-analyzer** | Analyze Java GC logs — detects anomalies, diagnoses root causes, and provides tuning recommendations for G1GC, ZGC, Shenandoah, Parallel, and Serial collectors. |
 
-### Content Generation (Manual Invocation)
+### Content & Writing
 
-The following skills require manual invocation using `/skill-name`:
+| Skill | Description |
+|-------|-------------|
+| **tech-article-outline** | Generate structured outlines for technical articles, blogs, and tutorials. Supports iterative refinement. |
+| **html-artifact** | Generate rich, single-file HTML artifacts — reports, comparisons, timelines, diagrams, slide decks — with a warm editorial design system and zero dependencies. |
 
-| Skill | Description | Command |
-|-------|-------------|---------|
-| **xhs-prompts** | Xiaohongshu infographic prompts generator | `/xhs-prompts` |
-| **infographic-prompts** | Professional infographic drawing prompts generator | `/infographic-prompts` |
-| **cover-image-prompts** | Article cover image prompts generator | `/cover-image-prompts` |
-| **article-illustrator-prompts** | Article illustration prompts generator | `/article-illustrator-prompts` |
+### Social & Automation
 
-### Diagram Generation (Manual Invocation)
+| Skill | Description |
+|-------|-------------|
+| **twitter-cli** | Guide for using twitter-cli to read, post, reply, search, and manage Twitter/X accounts via terminal. |
 
-| Skill | Description | Command |
-|-------|-------------|---------|
-| **drawio** | Generate draw.io diagrams as .drawio files, export to PNG/SVG/PDF | `/drawio` |
+### Workflow
 
-### Web Content Extraction (Manual Invocation)
-
-| Skill | Description | Command |
-|-------|-------------|---------|
-| **defuddle** | Extract clean markdown from web pages with proxy support | `defuddle` (auto-triggered on URL) |
-| **felo-web-fetch** | Extract web page content as markdown, HTML, or plain text | `/felo-web-fetch` |
-
-### Context Management (Auto-triggered)
-
-| Skill | Description | Trigger |
-|-------|-------------|---------|
-| **handoff** | Create and manage handoff documents for seamless work continuity | "create handoff", "save handoff", "继续工作", "load handoff" |
-
-## Attribution
-
-以下技能是基于 [baoyu-skills](https://github.com/JimLiu/baoyu-skills) 复刻的提示词版本：
-
-| 本仓库技能 | 来源技能 | 差异说明 |
-|------------|----------|----------|
-| `xhs-prompts` | `baoyu-xhs-images` | 只生成提示词，不生成图片 |
-| `infographic-prompts` | `baoyu-infographic` | 只生成提示词，不生成图片 |
-| `cover-image-prompts` | `baoyu-cover-image` | 只生成提示词，不生成图片 |
-| `article-illustrator-prompts` | `baoyu-article-illustrator` | 只生成提示词，不生成图片 |
-
-原 baoyu-skills 提供完整的图片生成功能，本项目仅保留提示词生成功能。
-
-### drawio
-
-`drawio` skill 来自 [drawio-mcp](https://github.com/jgraph/drawio-mcp) 项目，是一个纯提示词类型的 skill，用于生成 draw.io 图表文件。
-
-## Documentation
-
-- [Plugin Marketplace Standard](docs/plugin-marketplace-standard.md) - How to add new skills
+| Skill | Description |
+|-------|-------------|
+| **handoff** | Create and resume handoff documents to preserve work context across AI sessions. Triggered by "save handoff", "load handoff", "继续工作", etc. |
 
 ## License
 
