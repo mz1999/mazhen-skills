@@ -12,7 +12,7 @@ Or install specific skills:
 
 ```bash
 npx skills add mz1999/mazhen-skills --skill gc-log-analyzer
-npx skills add mz1999/mazhen-skills --skill html-artifact
+npx skills add mz1999/mazhen-skills --skill visual-html
 ```
 
 ## Skills
@@ -28,7 +28,7 @@ npx skills add mz1999/mazhen-skills --skill html-artifact
 | Skill | Description |
 |-------|-------------|
 | **tech-article-outline** | Generate structured outlines for technical articles, blogs, and tutorials. Supports iterative refinement. |
-| **html-artifact** | Generate rich, single-file HTML artifacts — reports, comparisons, timelines, diagrams, slide decks — with a warm editorial design system and zero dependencies. |
+| **visual-html** | Generate rich, single-file HTML artifacts — reports, comparisons, timelines, diagrams, slide decks — with a warm editorial design system and zero dependencies. |
 
 ### Social & Automation
 
@@ -40,7 +40,7 @@ npx skills add mz1999/mazhen-skills --skill html-artifact
 
 | Skill | Description |
 |-------|-------------|
-| **handoff** | Create and resume handoff documents to preserve work context across AI sessions. Triggered by "save handoff", "load handoff", "继续工作", etc. |
+| **handoff** | Create and resume handoff documents to preserve work context across AI sessions. Stores to `.claude/handoffs/handoff.md` (local-only). Triggered by "save handoff", "load handoff", "继续工作", "checkpoint", etc. |
 
 ## License
 

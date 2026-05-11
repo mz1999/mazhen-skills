@@ -1,5 +1,5 @@
 ---
-name: html-artifact
+name: visual-html
 description: >
   Generate rich, single-file HTML artifacts instead of markdown. Use this skill
   whenever the user wants to present information visually — whether they ask for
@@ -13,7 +13,7 @@ description: >
   and generates a self-contained .html file with no external dependencies.
 ---
 
-# HTML Artifact Skill
+# Visual HTML Skill
 
 Generate single-file HTML artifacts for any content, automatically selecting the right visual form based on content type.
 

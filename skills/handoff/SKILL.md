@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Create and manage handoff documents for seamless work continuity. Triggered when user says 'create handoff', 'save handoff', '记录上下文', 'load handoff', '继续工作', or 'resume work'. Helps preserve context across AI sessions.
+description: Create and manage handoff documents for seamless work continuity. Triggered when user says 'create handoff', 'save handoff', '记录上下文', '保存进度', '暂停工作', 'checkpoint', 'load handoff', '继续工作', '接着做', '接着上次', '恢复任务', or 'resume work'. Helps preserve context across AI sessions.
 
 ---
 
@@ -13,13 +13,15 @@ description: Create and manage handoff documents for seamless work continuity. T
 判断当前请求属于哪种模式：
 
 **创建/更新 handoff？** 用户说：
-- "create handoff" / "保存 handoff" / "记录上下文"
+- "create handoff" / "保存 handoff" / "记录上下文" / "保存进度"
 - "update handoff" / "更新 handoff"
+- "暂停工作" / "checkpoint" / "check point"
 → 执行 **CREATE 流程**
 
 **加载/继续工作？** 用户说：
 - "load handoff" / "继续工作" / "resume work"
-- "读取 handoff" / "恢复上下文"
+- "读取 handoff" / "恢复上下文" / "恢复任务"
+- "接着做" / "接着上次"
 → 执行 **RESUME 流程**
 
 ---
@@ -82,15 +84,36 @@ mkdir -p .claude/handoffs
 - 任务目标（Goal）
 - 当前进展（Current Progress）
 - 经验教训（What Worked / What Didn't Work）
+- 阻塞项（Blockers）
 - 下一步行动（Next Steps）
+- 相关文件（Related Files）
+- 记录时的环境信息（Environment）
 
-### Step 3: 向用户确认
+### Step 3: 验证环境
+
+对比 handoff 中的元数据与当前环境：
+
+```bash
+pwd                              # 当前项目路径
+git branch --show-current        # 当前 git 分支
+```
+
+检查项：
+- **项目路径**是否一致？如不一致，询问用户是否切换目录
+- **Git 分支**是否一致？如不一致，询问用户是否切换分支
+- 如有**阻塞项（Blockers）**，确认当前是否已解决
+- 如有**环境信息（Environment）**，确认相关服务/数据库状态是否变化
+
+如有任何不一致，向用户说明差异并确认如何处理。
+
+### Step 4: 向用户确认
 
 总结 handoff 中的关键信息，询问用户：
 - 是否从 "Next Steps" 的第一项开始继续？
 - 还是需要调整优先级？
+- 是否有新的阻塞项或环境变化需要考虑？
 
-### Step 4: 开始工作
+### Step 5: 开始工作
 
 根据确认的下一步行动开始工作。
 
