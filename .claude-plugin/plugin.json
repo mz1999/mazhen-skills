@@ -1,0 +1,9 @@
+{
+  "name": "mazhen-skills",
+  "skills": [
+    "./skills/gc-log-analyzer",
+    "./skills/tech-article-outline",
+    "./skills/twitter-cli",
+    "./skills/visual-html"
+  ]
+}

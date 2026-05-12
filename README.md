@@ -36,12 +36,6 @@ npx skills add mz1999/mazhen-skills --skill visual-html
 |-------|-------------|
 | **twitter-cli** | Guide for using twitter-cli to read, post, reply, search, and manage Twitter/X accounts via terminal. |
 
-### Workflow
-
-| Skill | Description |
-|-------|-------------|
-| **handoff** | Create and resume handoff documents to preserve work context across AI sessions. Stores to `.claude/handoffs/handoff.md` (local-only). Triggered by "save handoff", "load handoff", "继续工作", "checkpoint", etc. |
-
 ## License
 
 MIT
