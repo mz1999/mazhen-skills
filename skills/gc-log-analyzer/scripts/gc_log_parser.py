@@ -18,7 +18,8 @@ import json
 import re
 import sys
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
+import statistics
 from pathlib import Path
 
 
@@ -123,6 +124,24 @@ JDK8_METASPACE_LINE = re.compile(
     r"Metaspace\s+used\s+([\d]+)K,\s+capacity\s+([\d]+)K,\s+committed\s+([\d]+)K"
 )
 
+# G1GC detailed metrics (JDK 8 legacy)
+JDK8_GC_WORKERS = re.compile(r"\[Parallel Time:\s+[\d.]+ ms, GC Workers:\s+(\d+)\]")
+JDK8_OBJECT_COPY = re.compile(
+    r"\[Object Copy \(ms\): Min:\s+([\d.]+), Avg:\s+([\d.]+), Max:\s+([\d.]+), Diff:\s+([\d.]+), Sum:\s+([\d.]+)\]"
+)
+JDK8_WORKER_START = re.compile(
+    r"\[GC Worker Start \(ms\): Min:\s+([\d.]+), Avg:\s+([\d.]+), Max:\s+([\d.]+), Diff:\s+([\d.]+)\]"
+)
+JDK8_TIMES_DETAILED = re.compile(
+    r"\[Times:\s+user=([\d.]+)\s+sys=([\d.]+),\s+real=([\d.]+)\s+secs\]"
+)
+JDK8_SURVIVOR_THRESHOLD = re.compile(
+    r"Desired survivor size\s+(\d+)\s+bytes, new threshold\s+(\d+)\s+\(max\s+(\d+)\)"
+)
+JDK8_SAFEPOINT_LINE = re.compile(
+    r"Total time for which application threads were stopped:\s+([\d.]+)\s+seconds,\s+Stopping threads took:\s+([\d.]+)\s+seconds"
+)
+
 
 def parse_size(size_str, unit=""):
     """Convert size string with unit to bytes."""
@@ -186,6 +205,15 @@ class GCLogAnalyzer:
         # JDK8 state tracking
         self._jdk8_pending_gc = None
         self._jdk8_gc_start_line = 0
+        # Detailed metrics tracking (G1GC)
+        self._jdk8_gc_workers = None
+        self._jdk8_object_copy = None
+        self._jdk8_worker_start = None
+        self._jdk8_times_detailed = None
+        self._jdk8_survivor_threshold = None
+        # Safepoint tracking
+        self.safepoint_events = []
+        self._last_gc_real_time_sec = None
 
     def analyze(self):
         """Main analysis routine - single pass over the file."""
@@ -407,6 +435,12 @@ class GCLogAnalyzer:
             self._jdk8_gc_start_line = line_num
             return
 
+        # Check for safepoint lines (independent of GC events)
+        m = JDK8_SAFEPOINT_LINE.search(line)
+        if m:
+            self._process_safepoint(ts, float(m.group(1)), float(m.group(2)), line_num)
+            return
+
         # Check for Full GC start
         m = JDK8_FULL_GC_PATTERN.match(line)
         if m:
@@ -424,6 +458,14 @@ class GCLogAnalyzer:
 
         # If we have a pending GC, look for its end markers
         if self._jdk8_pending_gc:
+            # Check for detailed [Times: user=X sys=Y, real=Z secs]
+            m = JDK8_TIMES_DETAILED.search(line)
+            if m:
+                self._jdk8_times_detailed = {
+                    "user": float(m.group(1)), "sys": float(m.group(2)),
+                    "real": float(m.group(3)),
+                }
+
             # Check for [Times: ... real=X secs]
             m = JDK8_TIMES_PATTERN.search(line)
             if m:
@@ -459,6 +501,46 @@ class GCLogAnalyzer:
             m = JDK8_METASPACE_LINE.search(line)
             if m:
                 self._jdk8_pending_gc["metaspace_used_kb"] = int(m.group(1))
+                return
+
+            # Check for G1GC detailed metrics
+            m = JDK8_GC_WORKERS.search(line)
+            if m:
+                self._jdk8_gc_workers = int(m.group(1))
+                return
+
+            m = JDK8_OBJECT_COPY.search(line)
+            if m:
+                self._jdk8_object_copy = {
+                    "min": float(m.group(1)), "avg": float(m.group(2)),
+                    "max": float(m.group(3)), "diff": float(m.group(4)),
+                    "sum": float(m.group(5)),
+                }
+                return
+
+            m = JDK8_WORKER_START.search(line)
+            if m:
+                self._jdk8_worker_start = {
+                    "min": float(m.group(1)), "avg": float(m.group(2)),
+                    "max": float(m.group(3)), "diff": float(m.group(4)),
+                }
+                return
+
+            m = JDK8_TIMES_DETAILED.search(line)
+            if m:
+                self._jdk8_times_detailed = {
+                    "user": float(m.group(1)), "sys": float(m.group(2)),
+                    "real": float(m.group(3)),
+                }
+                return
+
+            m = JDK8_SURVIVOR_THRESHOLD.search(line)
+            if m:
+                self._jdk8_survivor_threshold = {
+                    "desired_bytes": int(m.group(1)),
+                    "new_threshold": int(m.group(2)),
+                    "max_threshold": int(m.group(3)),
+                }
                 return
 
     def _to_mb(self, val, unit):
@@ -541,6 +623,71 @@ class GCLogAnalyzer:
                 "description": f"Metadata GC Threshold triggered GC: {pause_ms:.1f}ms",
             })
 
+        # Calculate CPU utilization from detailed [Times] output
+        cpu_utilization = None
+        if self._jdk8_times_detailed and self._jdk8_gc_workers:
+            user_sys = self._jdk8_times_detailed["user"] + self._jdk8_times_detailed["sys"]
+            real = self._jdk8_times_detailed["real"]
+            workers = self._jdk8_gc_workers
+            if real > 0 and workers > 0:
+                cpu_utilization = round((user_sys / (workers * real)) * 100, 1)
+
+        # Save real time for next safepoint correlation
+        self._last_gc_real_time_sec = pause_sec
+
+        # Add detailed metrics to event
+        if cpu_utilization is not None:
+            event["cpu_utilization_percent"] = cpu_utilization
+        if self._jdk8_gc_workers:
+            event["gc_workers"] = self._jdk8_gc_workers
+        if self._jdk8_object_copy:
+            event["object_copy_ms"] = self._jdk8_object_copy
+        if self._jdk8_worker_start:
+            event["worker_start_ms"] = self._jdk8_worker_start
+        if self._jdk8_times_detailed:
+            event["times"] = self._jdk8_times_detailed
+        if self._jdk8_survivor_threshold:
+            event["survivor_threshold"] = self._jdk8_survivor_threshold
+
+        # Reset detailed tracking for next GC
+        self._jdk8_gc_workers = None
+        self._jdk8_object_copy = None
+        self._jdk8_worker_start = None
+        self._jdk8_times_detailed = None
+        self._jdk8_survivor_threshold = None
+
+    def _process_safepoint(self, timestamp, total_stopped_sec, stopping_sec, line_num):
+        """Process a safepoint line and detect non-GC safepoint pauses."""
+        gc_pause_sec = 0
+        # Heuristic: correlate with last GC only if times are reasonably close
+        if self._last_gc_real_time_sec:
+            tolerance = max(0.05, self._last_gc_real_time_sec * 0.2)
+            if abs(total_stopped_sec - self._last_gc_real_time_sec) <= tolerance:
+                gc_pause_sec = self._last_gc_real_time_sec
+
+        non_gc_pause_sec = total_stopped_sec - gc_pause_sec
+
+        event = {
+            "line": line_num,
+            "timestamp": str(timestamp) if timestamp else None,
+            "total_stopped_sec": round(total_stopped_sec, 4),
+            "stopping_sec": round(stopping_sec, 4),
+            "gc_pause_sec": round(gc_pause_sec, 4),
+            "non_gc_pause_sec": round(max(0, non_gc_pause_sec), 4),
+        }
+        self.safepoint_events.append(event)
+
+        # Flag non-GC safepoint pauses (> 100ms)
+        if non_gc_pause_sec > 0.1:
+            self.anomalies.append({
+                "line": line_num,
+                "type": "non_gc_safepoint",
+                "pause_ms": round(non_gc_pause_sec * 1000, 2),
+                "description": f"Non-GC safepoint pause: {non_gc_pause_sec*1000:.1f}ms (total stopped={total_stopped_sec*1000:.1f}ms, GC={gc_pause_sec*1000:.1f}ms)",
+            })
+
+        self._last_gc_real_time_sec = None
+
     def _build_summary(self):
         """Build the analysis summary, with collector-specific metrics."""
         summary = {
@@ -585,6 +732,11 @@ class GCLogAnalyzer:
         summary["anomaly_count"] = len(self.anomalies)
 
         summary["health_assessment"] = self._assess_health(summary.get("metrics", {}))
+
+        # Startup vs steady-state analysis
+        startup_analysis = self._build_startup_analysis()
+        if startup_analysis:
+            summary["startup_analysis"] = startup_analysis
 
         # Recent events sample
         summary["recent_events_sample"] = self.gc_events[-10:] if len(self.gc_events) >= 10 else self.gc_events
@@ -703,6 +855,127 @@ class GCLogAnalyzer:
             return {"status": "warning", "issues": issues}
         else:
             return {"status": "critical", "issues": issues}
+
+    def _build_startup_analysis(self):
+        """Analyze startup period vs steady state for G1GC JDK8 logs."""
+        if not self.gc_events:
+            return None
+
+        # Determine startup period: first 5 minutes or first 30 GC events
+        startup_end_time = None
+        if isinstance(self.first_timestamp, datetime):
+            startup_end_time = self.first_timestamp + timedelta(minutes=5)
+
+        startup_events = []
+        steady_events = []
+
+        for ev in self.gc_events:
+            ts = ev.get("timestamp")
+            if ts and startup_end_time:
+                try:
+                    ev_dt = datetime.fromisoformat(ts)
+                    if ev_dt <= startup_end_time:
+                        startup_events.append(ev)
+                    else:
+                        steady_events.append(ev)
+                except (ValueError, TypeError):
+                    steady_events.append(ev)
+            else:
+                # Fallback: first 30 events as startup
+                if len(startup_events) < 30:
+                    startup_events.append(ev)
+                else:
+                    steady_events.append(ev)
+
+        if not startup_events or not steady_events:
+            return None
+
+        def _avg_cpu(events):
+            vals = [e.get("cpu_utilization_percent") for e in events if e.get("cpu_utilization_percent") is not None]
+            return round(sum(vals) / len(vals), 1) if vals else None
+
+        def _avg_worker_start_diff(events):
+            vals = [e.get("worker_start_ms", {}).get("diff") for e in events if e.get("worker_start_ms")]
+            return round(sum(vals) / len(vals), 2) if vals else None
+
+        def _avg_object_copy(events):
+            vals = [e.get("object_copy_ms", {}).get("avg") for e in events if e.get("object_copy_ms")]
+            return round(sum(vals) / len(vals), 2) if vals else None
+
+        def _eden_std(events):
+            vals = [e.get("eden_before_mb") for e in events if e.get("eden_before_mb")]
+            return round(statistics.stdev(vals), 2) if len(vals) > 1 else None
+
+        startup_cpu = _avg_cpu(startup_events)
+        steady_cpu = _avg_cpu(steady_events)
+        startup_worker_diff = _avg_worker_start_diff(startup_events)
+        steady_worker_diff = _avg_worker_start_diff(steady_events)
+        startup_obj_copy = _avg_object_copy(startup_events)
+        steady_obj_copy = _avg_object_copy(steady_events)
+        startup_eden_std = _eden_std(startup_events)
+        steady_eden_std = _eden_std(steady_events)
+
+        analysis = {
+            "startup_event_count": len(startup_events),
+            "steady_event_count": len(steady_events),
+            "log_duration_minutes": round((self.last_timestamp - self.first_timestamp).total_seconds() / 60, 2) if isinstance(self.first_timestamp, datetime) and isinstance(self.last_timestamp, datetime) else None,
+        }
+
+        if startup_cpu is not None and steady_cpu is not None:
+            analysis["cpu_utilization"] = {
+                "startup_avg": startup_cpu,
+                "steady_avg": steady_cpu,
+                "diff": round(startup_cpu - steady_cpu, 1),
+            }
+
+        if startup_worker_diff is not None and steady_worker_diff is not None:
+            analysis["worker_start_diff_ms"] = {
+                "startup_avg": startup_worker_diff,
+                "steady_avg": steady_worker_diff,
+                "diff": round(startup_worker_diff - steady_worker_diff, 2),
+            }
+
+        if startup_obj_copy is not None and steady_obj_copy is not None:
+            analysis["object_copy_ms"] = {
+                "startup_avg": startup_obj_copy,
+                "steady_avg": steady_obj_copy,
+            }
+
+        if startup_eden_std is not None and steady_eden_std is not None:
+            analysis["eden_before_std_mb"] = {
+                "startup": startup_eden_std,
+                "steady": steady_eden_std,
+                "diff": round(startup_eden_std - steady_eden_std, 2),
+            }
+
+        # Annotate anomalies with time-since-startup
+        for a in self.anomalies:
+            a_line = a["line"]
+            nearest = None
+            for ev in self.gc_events:
+                if abs(ev["line"] - a_line) < 50:
+                    nearest = ev
+                    break
+            if nearest and nearest.get("timestamp"):
+                try:
+                    ev_dt = datetime.fromisoformat(nearest["timestamp"])
+                    if isinstance(self.first_timestamp, datetime):
+                        seconds_since_start = (ev_dt - self.first_timestamp).total_seconds()
+                        a["seconds_since_startup"] = round(seconds_since_start, 2)
+                        a["in_startup_period"] = seconds_since_start <= 300
+                except (ValueError, TypeError):
+                    pass
+
+        # Non-GC safepoint summary
+        if self.safepoint_events:
+            long_safepoints = [s for s in self.safepoint_events if s.get("non_gc_pause_sec", 0) > 0.1]
+            analysis["safepoint_summary"] = {
+                "total_safepoints": len(self.safepoint_events),
+                "long_non_gc_safepoints": len(long_safepoints),
+                "max_non_gc_pause_ms": round(max(s["non_gc_pause_sec"] for s in long_safepoints) * 1000, 2) if long_safepoints else 0,
+            }
+
+        return analysis
 
     def extract_window(self, start_time, end_time):
         """Extract log lines within a time window."""

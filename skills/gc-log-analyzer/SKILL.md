@@ -152,6 +152,34 @@ Based on GC frequency stability, pause time distribution, and memory usage trend
 
 > **Important**: Always state your confidence level (high/medium/low) and what additional data would strengthen the inference (e.g., application QPS metrics, CPU usage, business event logs).
 
+### Step 5: Time Context & Startup Period Analysis
+
+Before concluding Phase 1, you **must** perform a temporal context check. This step prevents the critical mistake of misinterpreting startup-phase behaviors as steady-state problems.
+
+**Why startup is different:**
+- JIT compilation is warming up (C1 → C2, deoptimization spikes)
+- Metaspace is being populated (class loading storm)
+- Adaptive collectors (G1, Parallel) are learning heap sizing
+- OS page caches are cold, memory may need zeroing
+- Native libraries may be initializing
+
+**Checklist:**
+1. **Log span**: How long does the log cover? (Minutes, hours, days?)
+2. **Anomaly timing**: When do anomalies occur relative to JVM startup? Use `seconds_since_startup` and `in_startup_period` from the parser output.
+3. **Startup period definition**: First 3-5 minutes after JVM start, or the first ~30 GC events (whichever is larger).
+4. **Compare startup vs steady state**: Use the parser's `startup_analysis` output to contrast metrics between the two phases. Look for systematic differences — any metric that differs significantly between the two phases is a candidate explanation for startup-only anomalies.
+5. **Question your assumptions**: If an anomaly only occurs during startup, the root cause is likely not "GC needs tuning" but "startup-phase interference."
+
+**Decision Rule:**
+- If **all** long pauses occur within the first 5 minutes → classify as **startup-phase issue**, not a tuning issue
+- If long pauses occur **both** in startup and steady state → systemic problem
+- If long pauses occur **only** in steady state → true tuning/degradation issue
+
+**Action:**
+- For startup-only issues: explain *why* startup is different, identify which startup-phase mechanisms are responsible, and advise whether the issue will self-resolve
+- For systemic issues: proceed to Phase 2 deep dive with full severity
+- For steady-state-only issues: proceed to Phase 2, focus on sustained workload factors
+
 ## Phase 2: Deep Dive
 
 For each anomaly flagged in Phase 1, perform a root-cause analysis.
@@ -163,6 +191,13 @@ Sort by impact:
 2. **Long STW pauses** — tail latency impact
 3. **Frequent GC** — throughput impact
 4. **Memory pressure trends** — risk of future failures
+
+**Startup-period adjustment**: If a long pause occurred within the first 5 minutes of JVM startup, downgrade its priority *for tuning recommendations* but **not** for root-cause explanation. The question shifts from "how do I tune GC?" to "what startup-phase mechanism caused this, and will it recur in steady state?"
+
+Always answer these three questions for startup anomalies:
+- What startup-phase mechanism explains this pause? (JIT, class loading, adaptive sizing, cold caches)
+- Does the evidence support steady-state recurrence? (Check if the same pattern appears after minute 5)
+- Should the user take action, or will it self-resolve?
 
 ### Step 2: Extract Complete Trace
 
@@ -265,6 +300,9 @@ For each anomaly, build a **reasoning chain** that walks from the observed pheno
 | Full GC 后老年代残留持续增长 | 每次 Full GC 都有对象无法回收 | 内存泄漏；静态缓存持续增长；session 未过期 |
 | Allocation stall 持续恶化 | 并发回收速率 < 分配速率 | 堆不足；分配速率增加；存活对象集增长 |
 | ZGC heap 使用率 Mark Start 始终 >90% | 几乎没有 headroom 给并发阶段 | 堆太小；泄漏；或应用设计需要更大堆 |
+| 启动期 CPU 利用率显著低于稳定期 (>20% gap) | GC 线程与启动期活动竞争 CPU | JIT 编译、类加载、native 初始化；检查容器 CPU limit |
+| 启动期 Worker Start Diff >10ms | GC worker 线程启动/调度延迟高 | OS 调度器压力；容器环境；减少 ParallelGCThreads |
+| 非 GC safepoint 停顿 (>100ms) 且 `Stopping threads` 很小 | VM 操作（非 GC）导致 STW | 偏向锁撤销、类重定义、Deoptimization；加 `-XX:+PrintGCApplicationStoppedTime` 确认 |
 
 ---
 
@@ -338,3 +376,4 @@ ALWAYS output the final analysis using this structure:
 3. **Explain the why.** Don't just say "increase heap" — explain that "the concurrent marking cycle couldn't complete before old gen filled, forcing a Full GC. A larger heap gives the concurrent phase more headroom."
 4. **Distinguish correlation from causation.** High GC frequency after a deployment might be due to new code allocating more, not a GC tuning issue.
 5. **Be honest about uncertainty.** If the log doesn't contain enough information to determine root cause (e.g., missing JVM args), say so and explain what additional information would help.
+6. **Always check startup period first.** Before treating any anomaly as a tuning target, verify whether it occurred during the first 3-5 minutes of JVM startup. Use the parser's `startup_analysis` and `seconds_since_startup` fields. A 1.4s pause at T+45s and a 1.4s pause at T+4 hours have completely different root causes and remedies.
