@@ -977,6 +977,15 @@ class GCLogAnalyzer:
 
         return analysis
 
+    def extract_window_by_line(self, start_line, end_line):
+        """Extract log lines within a line number range."""
+        with open(self.filepath, "r", encoding="utf-8", errors="ignore") as f:
+            for i, line in enumerate(f, 1):
+                if start_line <= i <= end_line:
+                    print(line.rstrip("\n\r"))
+                if i > end_line:
+                    break
+
     def extract_window(self, start_time, end_time):
         """Extract log lines within a time window."""
         start_dt = None
@@ -1040,6 +1049,8 @@ def main():
     parser.add_argument("--anomalies", action="store_true", help="Output anomalies with context")
     parser.add_argument("--window-start", help="Window start time (ISO-8601)")
     parser.add_argument("--window-end", help="Window end time (ISO-8601)")
+    parser.add_argument("--window-start-line", type=int, help="Window start line number")
+    parser.add_argument("--window-end-line", type=int, help="Window end line number")
     parser.add_argument("--context-lines", type=int, default=5, help="Context lines around anomalies")
 
     args = parser.parse_args()
@@ -1056,6 +1067,9 @@ def main():
     elif args.window_start and args.window_end:
         analyzer.analyze()
         analyzer.extract_window(args.window_start, args.window_end)
+    elif args.window_start_line and args.window_end_line:
+        analyzer.analyze()
+        analyzer.extract_window_by_line(args.window_start_line, args.window_end_line)
     else:
         summary = analyzer.analyze()
         print(json.dumps(summary, indent=2, ensure_ascii=False))
