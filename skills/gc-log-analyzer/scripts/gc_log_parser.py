@@ -1002,7 +1002,8 @@ class GCLogAnalyzer:
 
                 if ts and start_dt and end_dt:
                     if isinstance(ts, datetime):
-                        if start_dt <= ts <= end_dt:
+                        ts_naive = ts.replace(tzinfo=None) if ts.tzinfo else ts
+                        if start_dt <= ts_naive <= end_dt:
                             print(line)
                 else:
                     print(line)
