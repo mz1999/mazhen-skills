@@ -706,10 +706,13 @@ class GCLogAnalyzer:
             # Only report p99 when sample size >= 100; otherwise use p95 with note
             p99 = sorted_pauses[int(n * 0.99)] if n >= 100 else None
 
-            runtime_estimate_ms = self._estimate_runtime_ms()
+            runtime_estimate_ms, runtime_is_estimated = self._estimate_runtime_ms()
             throughput = 100.0
             if runtime_estimate_ms > 0:
                 throughput = max(0, 100.0 - (self.total_pause_ms / runtime_estimate_ms * 100))
+
+            summary["runtime_is_estimated"] = runtime_is_estimated
+            summary["estimated_runtime_ms"] = round(runtime_estimate_ms, 2)
 
             # Collector-specific metrics
             if self.collector == "ZGC":
@@ -808,12 +811,19 @@ class GCLogAnalyzer:
         return metrics
 
     def _estimate_runtime_ms(self):
-        """Estimate total runtime from timestamps or uptime values."""
+        """Estimate total runtime from timestamps or uptime values.
+
+        Returns:
+            (runtime_ms, is_estimated): runtime_ms is the estimated total
+            runtime in milliseconds; is_estimated is True when the value is
+            a heuristic fallback rather than derived from actual timestamps.
+        """
         if isinstance(self.first_timestamp, datetime) and isinstance(self.last_timestamp, datetime):
-            return (self.last_timestamp - self.first_timestamp).total_seconds() * 1000
+            return (self.last_timestamp - self.first_timestamp).total_seconds() * 1000, False
         elif isinstance(self.first_timestamp, (int, float)) and isinstance(self.last_timestamp, (int, float)):
-            return (self.last_timestamp - self.first_timestamp) * 1000
-        return max(self.total_pause_ms * 20, 60000)
+            return (self.last_timestamp - self.first_timestamp) * 1000, False
+        estimated = max(self.total_pause_ms * 20, 60000)
+        return estimated, True
 
     def _assess_health(self, metrics):
         """Assess overall GC health, with collector-specific rules."""
@@ -987,7 +997,13 @@ class GCLogAnalyzer:
                     break
 
     def extract_window(self, start_time, end_time):
-        """Extract log lines within a time window."""
+        """Extract log lines within a time window.
+
+        For JDK 8 legacy logs, GC events span multiple lines but only the
+        start line has a timestamp. We track whether we are inside a windowed
+        event and include continuation lines so the extracted context stays
+        readable.
+        """
         start_dt = None
         end_dt = None
         try:
@@ -996,26 +1012,38 @@ class GCLogAnalyzer:
         except ValueError:
             pass
 
+        if not start_dt or not end_dt:
+            print("Error: Invalid time format. Use ISO-8601 like '2024-01-15T10:23:45'", file=sys.stderr)
+            sys.exit(1)
+
+        in_window = False
         with open(self.filepath, "r", encoding="utf-8", errors="ignore") as f:
             for line in f:
-                line = line.rstrip("\n\r")
-                if not line.strip():
-                    print(line)
+                line_stripped = line.rstrip("\n\r")
+                if not line_stripped.strip():
+                    if in_window:
+                        print(line_stripped)
                     continue
 
                 ts = None
                 if self.format == "jdk9_unified":
-                    ts = parse_jdk9_timestamp(line)
+                    ts = parse_jdk9_timestamp(line_stripped)
                 elif self.format == "jdk8_legacy":
-                    ts = parse_jdk8_timestamp(line)
+                    ts = parse_jdk8_timestamp(line_stripped)
 
                 if ts and start_dt and end_dt:
                     if isinstance(ts, datetime):
                         ts_naive = ts.replace(tzinfo=None) if ts.tzinfo else ts
                         if start_dt <= ts_naive <= end_dt:
-                            print(line)
+                            in_window = True
+                            print(line_stripped)
+                        else:
+                            in_window = False
                 else:
-                    print(line)
+                    # Continuation line of a GC event (common in JDK8).
+                    # Keep it only if it belongs to the current windowed event.
+                    if in_window:
+                        print(line_stripped)
 
     def extract_anomaly_context(self, context_lines=5):
         """Extract context around each anomaly."""

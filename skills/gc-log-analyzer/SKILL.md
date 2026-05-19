@@ -38,6 +38,10 @@ GC logs can be very large (hundreds of MB to GBs). Never attempt to read the ent
    ```bash
    python3 scripts/gc_log_parser.py /path/to/gc.log --window-start "2024-01-15T10:23:45" --window-end "2024-01-15T10:24:00" > window.log
    ```
+   For JDK 8 legacy logs where GC events span multiple lines and timestamp parsing can be unreliable, prefer line-number-based extraction (the summary includes line numbers for every anomaly):
+   ```bash
+   python3 scripts/gc_log_parser.py /path/to/gc.log --window-start-line 1240 --window-end-line 1260 > window.log
+   ```
 4. **If the log is small** (< 5000 lines), you may read it directly, but still run the script for structured metrics.
 
 ### Format Detection
