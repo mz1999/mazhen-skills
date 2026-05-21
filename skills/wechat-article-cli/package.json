@@ -1,0 +1,36 @@
+{
+  "name": "wechat-article-cli",
+  "version": "1.0.1",
+  "description": "CLI to fetch WeChat public account articles as Markdown via kimi-webbridge",
+  "main": "src/fetch.js",
+  "bin": {
+    "wechat-article-cli": "bin/wechat-article-cli.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node bin/wechat-article-cli.js --help"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mz1999/mazhen-skills.git"
+  },
+  "keywords": [
+    "wechat",
+    "mp.weixin",
+    "article",
+    "markdown",
+    "cli",
+    "kimi-webbridge"
+  ],
+  "author": "mazhen",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {}
+}

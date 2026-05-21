@@ -29,6 +29,7 @@ npx skills add mz1999/mazhen-skills --skill visual-html
 |-------|-------------|
 | **tech-article-outline** | Generate structured outlines for technical articles, blogs, and tutorials. Supports iterative refinement. |
 | **visual-html** | Generate rich, single-file HTML artifacts — reports, comparisons, timelines, diagrams, slide decks — with a warm editorial design system and zero dependencies. |
+| **wechat-article-cli** | Fetch WeChat public account (mp.weixin.qq.com) articles as Markdown via the real browser. `npm install -g wechat-article-cli` |
 
 ### Social & Automation
 
