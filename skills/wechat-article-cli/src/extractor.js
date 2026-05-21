@@ -1,8 +1,7 @@
-function escapeMarkdown(text) {
-  return text.replace(/([\\`*_{}[$#+\-.!|])/g, '\\$1');
-}
-
 function extractionScript() {
+  function escapeMarkdown(text) {
+    return text.replace(/([\\`*_{}[$#+\-.!|])/g, '\\$1');
+  }
   const article = document.querySelector('#js_content');
   const titleEl = document.querySelector('.rich_media_title');
 

@@ -1,6 +1,6 @@
 {
   "name": "wechat-article-cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "CLI to fetch WeChat public account articles as Markdown via kimi-webbridge",
   "main": "src/fetch.js",
   "bin": {
