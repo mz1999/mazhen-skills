@@ -4,6 +4,7 @@
     "./skills/gc-log-analyzer",
     "./skills/tech-article-outline",
     "./skills/twitter-cli",
-    "./skills/visual-html"
+    "./skills/visual-html",
+    "./skills/wechat-article-cli"
   ]
 }
