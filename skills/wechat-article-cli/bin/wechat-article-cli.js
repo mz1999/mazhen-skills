@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 const { fetchArticle } = require('../src/fetch');
 const output = require('../src/output');
+const pkg = require('../package.json');
 
 const HELP = `Usage: wechat-article-cli <command> [args]
 
 Commands:
   fetch <url>     Fetch a WeChat article and output as Markdown JSON
   --help, -h      Show this help message
+  --version, -v   Show version number
 
 Environment:
   WEBBRIDGE_URL   kimi-webbridge daemon URL (default: http://127.0.0.1:10086)
@@ -20,6 +22,11 @@ async function main() {
 
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
     console.log(HELP);
+    process.exit(0);
+  }
+
+  if (args[0] === '--version' || args[0] === '-v') {
+    console.log(pkg.version);
     process.exit(0);
   }
 
