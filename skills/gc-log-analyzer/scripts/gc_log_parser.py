@@ -158,9 +158,9 @@ JDK8_TIMES_PATTERN = re.compile(
 JDK8_SIMPLE_PAUSE = re.compile(
     r",\s+([\d.]+)\s+secs\]\s*$"
 )
-# Match Full GC
+# Match Full GC (handles both "timestamp: [Full GC" and "timestamp: uptime: [Full GC")
 JDK8_FULL_GC_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[^:]*:\s+\[Full GC"
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[^:]*:\s+(?:[\d.]+\s*:\s+)?\[Full GC"
 )
 # Match Eden/Survivors/Heap line
 JDK8_HEAP_LINE = re.compile(
@@ -262,7 +262,7 @@ class Jdk8G1EventParser:
 
     # Event start/end patterns
     GC_START_PATTERN = re.compile(r'\[GC pause \((.+?)\)\s+\(?(\w+)')
-    FULL_GC_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[^:]*:\s+\[Full GC')
+    FULL_GC_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[^:]*:\s+(?:[\d.]+\s*:\s+)?\[Full GC')
     TIMES_PATTERN = re.compile(r'\[Times:\s+user=[\d.]+\s+sys=[\d.]+,\s+real=([\d.]+)\s+secs\]')
     SIMPLE_PAUSE_PATTERN = re.compile(r',\s+([\d.]+)\s+secs\]\s*$')
 
@@ -693,7 +693,7 @@ class GCLogAnalyzer:
                 self.g1_detail_phases[phase_name].append(duration_ms)
 
         # Match to-space exhausted (G1)
-        if "To-space exhausted" in line:
+        if "to-space exhausted" in line.lower():
             self.anomalies.append({
                 "line": line_num,
                 "type": "to_space_exhausted",
@@ -743,6 +743,26 @@ class GCLogAnalyzer:
                     'type': 'concurrent_mark_overflow',
                     'description': 'G1 concurrent mark reset for overflow',
                 })
+
+        # --- G1 anomaly detection (must run before G1 parser returns) ---
+        if "to-space exhausted" in line.lower():
+            self.anomalies.append({
+                "line": line_num,
+                "type": "to_space_exhausted",
+                "description": "To-space exhausted (evacuation failure)",
+            })
+        if "Humongous" in line and "object size" in line:
+            self.anomalies.append({
+                "line": line_num,
+                "type": "humongous_allocation",
+                "description": "Humongous object allocation",
+            })
+        if "Degenerated GC" in line:
+            self.anomalies.append({
+                "line": line_num,
+                "type": "degenerated_gc",
+                "description": "Shenandoah degenerated GC",
+            })
 
         # --- G1 state machine (when collector is unknown or G1) ---
         if self.collector in (None, 'G1GC'):
