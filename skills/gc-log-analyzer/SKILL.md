@@ -25,16 +25,23 @@ Experienced Java engineers who understand Java but may not be deeply familiar wi
 
 GC logs can be very large (hundreds of MB to GBs). Never attempt to read the entire file into context.
 
-1. **Run the extraction script first**: Use `scripts/gc_log_parser.py` to generate a statistical summary. This script handles both JDK 8 (`-XX:+PrintGCDetails`) and JDK 9+ (`-Xlog:gc*`) formats.
+1. **Ensure dependencies are installed**: The parser uses `numpy`/`scipy` for heap trend regression analysis.
+   ```bash
+   pip3 install numpy scipy
+   ```
+   If unavailable, trend analysis gracefully degrades to `insufficient_data`.
+
+2. **Run the extraction script first**: Use `scripts/gc_log_parser.py` to generate a statistical summary. This script handles both JDK 8 (`-XX:+PrintGCDetails`) and JDK 9+ (`-Xlog:gc*`) formats.
    ```bash
    python3 scripts/gc_log_parser.py /path/to/gc.log --summary > gc_summary.json
    ```
-2. **Read the summary** to identify:
+   解析器输出的字段精确语义见 `references/parser_output.md`。
+3. **Read the summary** to identify:
    - GC algorithm
    - Total GC count, total pause time, max pause time
    - Throughput (time spent not in GC)
    - Anomaly timestamps (pauses above threshold, memory pressure spikes)
-3. **Selective deep read**: Based on the summary, use the script to extract specific time windows:
+4. **Selective deep read**: Based on the summary, use the script to extract specific time windows:
    ```bash
    python3 scripts/gc_log_parser.py /path/to/gc.log --window-start "2024-01-15T10:23:45" --window-end "2024-01-15T10:24:00" > window.log
    ```
@@ -42,82 +49,111 @@ GC logs can be very large (hundreds of MB to GBs). Never attempt to read the ent
    ```bash
    python3 scripts/gc_log_parser.py /path/to/gc.log --window-start-line 1240 --window-end-line 1260 > window.log
    ```
-4. **If the log is small** (< 5000 lines), you may read it directly, but still run the script for structured metrics.
-
-### Format Detection
-
-GC logs come in multiple formats. Detection order:
-
-1. **JDK 9+ Unified Logging** (`-Xlog:gc*`): Contains `[gc]` tags, bracketed metadata like `[0.234s][info][gc]`.
-2. **JDK 8 Legacy** (`-XX:+PrintGCDetails -XX:+PrintGCDateStamps`): Starts with timestamps like `2024-01-15T10:23:45.123+0800` or `[GC ...]` without tags.
-3. **Plain `-XX:+PrintGC`** (minimal): Only basic pause info, lacks phase breakdown. Flag this to the user as insufficient for deep analysis.
-
-If the format is ambiguous, examine the first 20 lines and match against known patterns. See `references/jdk_formats.md` for detailed format signatures.
-
-### JVM Arguments
-
-If available, also read the JVM startup parameters (often in application logs or provided by the user). Key parameters to check:
-- `-Xms`, `-Xmx` (heap size)
-- `-XX:+UseG1GC`, `-XX:+UseZGC`, `-XX:+UseShenandoahGC`, `-XX:+UseParallelGC`
-- `-XX:MaxGCPauseMillis`, `-XX:G1HeapRegionSize`
-- `-XX:ConcGCThreads`, `-XX:ParallelGCThreads`
-
-These parameters provide critical context for interpreting GC behavior. For example, a 5-second pause may be normal for a 100GB heap with default settings, but alarming for a 4GB heap tuned for 100ms pauses.
+5. **Extract anomaly context**: For Phase 2 deep dive, get each anomaly with surrounding raw log lines:
+   ```bash
+   python3 scripts/gc_log_parser.py /path/to/gc.log --anomalies --context-lines 5 > anomalies.json
+   ```
+   Output: anomaly objects with `context_lines` (raw log array) and `context_range` (line numbers).
+   Note: `--context-lines N` means N lines before and N lines after the anomaly line, totaling approximately `2N+1` lines.
+6. **If the log is small** (< 5000 lines), you may read it directly, but still run the script for structured metrics.
 
 ## Phase 1: Global Scan
 
 Build a system-wide GC pressure profile. Do not skip this phase.
 
-### Step 1: Identify GC Algorithm
+### Understanding Parser Output: What anomalies are and are not
 
-Determine which collector is in use. Look for:
-- G1GC: `[gc,start ] GC(42) Pause Young (Normal)`, `[gc,start ] GC(42) Pause Full`
-- ZGC: `[gc,start ] GC(42) Pause Mark Start`, `[gc ] GC(42) Concurrent Mark`
-- Shenandoah: `[gc,start ] GC(42) Pause Init Mark`, `[gc ] GC(42) Concurrent evacuation`
-- Parallel: `[gc,start ] PSYoungGen: ...`, `[Full GC ...]`
+**`anomalies` 数组只包含"零容忍型异常"**——任何一次出现即代表 JVM 行为超出正常设计范围的事件。parser 不做阈值判断，不做频率统计。
 
-Read `references/gc_algorithms.md` for the complete list of format signatures and key metrics per algorithm.
+当前 parser 标记的零容忍异常：
+- `full_gc` — Full GC（所有收集器）
+- `allocation_stall` — ZGC 分配停顿（应用线程被阻塞）
+- `to_space_exhausted` — G1 To-space 耗尽（evacuation failure）
+- `humongous_allocation` — G1 Humongous 对象分配
+- `degenerated_gc` — Shenandoah 退化 GC（并发失败回退 STW）
+- `concurrent_mark_overflow` — G1 并发标记溢出重置
 
-### Step 2: Extract Key Metrics
+**以下异常 parser 不标记，需要你从聚合数据中自行判断**（参考阈值见 Step 2）：
+- 长停顿 → 从 `metrics.max_pause_ms` / `pause_by_type` 判断（参考：G1 STW > 200ms、ZGC/Shenandoah > 10ms 即视为异常）
+- 频繁 GC → 从 `metrics.gc_frequency_per_minute` 判断（参考：Young GC > 20/分钟需关注）
+- VM 操作开销 → 从 `vm_operations` 判断（参考：`total_ms / total_pause_ms > 10%` 或 `max_ms > 200ms`）
+- 堆泄漏 → 从 `heap_trend` 判断（参考：`leak_risk` 为 medium/high，或 `post_full_gc_slope_kbps > 0`）
+- Metaspace 不足 → 从 `gc_causes` 中 "Metadata GC Threshold" 的次数判断（参考：> 3 次需关注）
+- Mixed GC 低效 → 从 `pause_by_type` 中 Mixed vs Young 对比判断（参考：Mixed avg > 2x Young avg）
+- 晋升过快 → 从 `promotion` 判断（参考：`avg_promoted_per_gc_mb` > Survivor 空间大小）
 
-For **all algorithms**, collect:
-- **Throughput**: Percentage of total runtime NOT spent in GC pauses. Target: > 95% for most applications, > 99% for latency-sensitive.
-- **Pause time distribution**: Min / avg / p50 / p95 / p99 / max STW pause.
-- **GC frequency**: Events per minute.
-- **Heap pressure**: Peak used vs committed heap over time.
+**以上列表是常见异常类型，但不穷尽**。你应结合所有聚合数据主动发现其他异常模式，例如：
+- 停顿时间的双峰分布（大多数 Young GC 正常，但偶尔跳到异常高值）
+- GC 频率的突然跳变（`pause_intervals_ms.p95 / avg > 3x` 表明间隔高度不规则）
+- 堆占用的周期性波动（`heap_trigger_stats` 中占用率规律性地接近上限）
+- 并发周期的持续延长（`concurrent_cycles` 中 avg 逐段上升）
 
-For **G1GC specifically**:
-- Young GC frequency and duration
-- Mixed GC frequency (indicates old-gen pressure)
-- Full GC count (should be zero in healthy systems)
-- Humongous object allocation frequency
-- To-space exhausted events (indicates allocation rate exceeding evacuation speed)
+**重要**：如果 `anomalies` 数组为空，不代表系统健康。必须从 `metrics`、`pause_by_type`、`heap_trend`、`gc_causes`、`pause_intervals_ms`、`concurrent_cycles` 等聚合数据中做完整分析。
 
-For **ZGC specifically**:
-- Mark/Relocate cycle duration
-- Allocation stall events (critical — indicates heap exhaustion during concurrent phase)
-- Page cache hit rate
+### Step 1: Extract Key Metrics
 
-For **Shenandoah specifically**:
-- Pacing delays (indicates allocation pressure)
-- Degenerated/full GC fallbacks (should be rare)
-- Concurrent mark/compact durations
+读取 parser 输出的完整 summary JSON（所有字段的精确语义见 `references/parser_output.md`），重点关注以下维度：
 
-### Step 3: Flag Anomaly Events
+**核心指标（所有收集器通用）**：
+- 停顿分布：`metrics.max_pause_ms` / `min_pause_ms` / `avg_pause_ms` / `p50_pause_ms` / `p95_pause_ms` / `p99_pause_ms`
+- 吞吐：`metrics.throughput_percent`
+- 频率：`metrics.gc_frequency_per_minute`
+- 总量：`metrics.total_gc_events` / `metrics.total_pause_ms` / `metrics.full_gc_count`
+- 零容忍异常：`anomaly_counts` / `anomalies`
 
-Flag events matching these patterns (adjust thresholds based on application SLA):
+**按收集器重点关注的维度**：
+- **G1**：`pause_by_type`（Mixed vs Young 对比）、`concurrent_cycles`（reset-for-overflow）、`g1_detail_phases`、`promotion`、`heap_trigger_stats`
+- **ZGC**：`metrics.allocation_stall_count` / `allocation_stall_ms`、`metrics.cycle_*`、`metrics.mmu`
+- **Shenandoah**：`anomaly_counts.degenerated_gc`、`concurrent_cycles`
 
-| Anomaly | Typical Threshold | Why It Matters |
-|---------|------------------|----------------|
-| Long STW pause | > 200ms (G1), > 10ms (ZGC/Shenandoah) | Directly impacts latency |
-| Full GC | Any occurrence | Stop-the-world evacuation of entire heap, usually indicates failure of incremental collection |
-| Frequent Young GC | > 20/min | High allocation rate or undersized young gen |
-| Increasing old-gen usage | Steady upward trend across cycles | Memory leak or promotion rate exceeding collection rate |
-| To-space exhausted (G1) | Any occurrence | Evacuation failure — objects couldn't be copied fast enough |
-| Allocation stall (ZGC) | Any occurrence | Application threads blocked waiting for memory |
-| Humongous allocation (G1) | Frequent occurrences | Bypasses normal allocation path, can trigger premature GC |
+**通用分析维度（按需提取）**：
+- 堆趋势：`heap_trend`（泄漏检测与 OOM 预估）
+- 触发原因：`gc_causes`（Metaspace/GCLocker/System.gc 等问题）
+- VM 开销：`vm_operations`（非 GC safepoint）
+- 内存效率：`memory_efficiency` / `gc_efficiency`
+- 启动期：`startup_analysis`（区分启动期行为 vs 稳态问题）
+- 近期样本：`recent_events_sample`（快速了解最近 10 个 GC 事件）
+- 间隔规律：`pause_intervals_ms`（分配速率突增、GC 压力变化）
 
-### Step 4: Health Overview
+**Phase 2 定位坐标（用于提取具体事件上下文）**：
+- 最长停顿：`top_pauses`（前 20 个 STW 事件，含行号）
+- Full GC 清单：`full_gc_events`（全部 Full GC，含行号）
+- 按类型 Top：`top_by_type`（Mixed/Young 等类型各自的最长事件）
+- 按原因 Top：`top_by_cause`（Metadata GC Threshold/GCLocker 等各自的最长事件）
+- GC 节奏：`gc_cadence`（每分钟 GC 次数，定位频率突增窗口）
+- 堆采样：`heap_samples`（堆占用时间序列，验证泄漏趋势）
+- Safepoint 事件：`safepoint_events`（非 GC safepoint，含行号）
+- 晋升风暴：`promotion_spikes`（晋升量最大的事件）
+
+### Step 2: Flag Anomaly Events
+
+根据应用 SLA 调整阈值，标记以下异常。**记录每个异常的时间戳和行号，用于 Step 4 的启动期判断。**
+
+- **零容忍（任何出现即异常）**：Full GC（所有收集器）、To-space exhausted（G1）、Allocation stall（ZGC）、Humongous allocation（G1）、Degenerated GC（Shenandoah）、Concurrent mark overflow（G1）
+- **超过算法典型阈值**：G1 STW > 200ms、ZGC/Shenandoah STW > 1ms、Young GC 频率 > 20/分钟
+- **结合 `heap_trend` 判断**：堆斜率显著为正且 R² > 0.7、Full GC 后堆仍持续增长
+
+> **注意**：启动期（前 3-5 分钟）出现的异常同样要标记，不要在 Step 2 中过滤掉。启动期的上下文在 Step 4 和 Phase 2 中处理。
+>
+> 特别地，**启动期高频 GC（>20/分钟）要标记**——虽然这是常见的启动期行为，但不要预先判断"这是正常的所以跳过"。标记后交给 Step 4 做启动期确认，在 Report 中标注【启动期】。
+
+### Step 2b: Heap Trend & Leak Risk Assessment
+
+读取 `heap_trend`（需 `numpy`/`scipy`，否则跳过）：
+
+- `leak_risk` 为 medium/high → 标记异常；`estimated_hours_to_oom` < 24h → 紧急
+- `post_full_gc_slope_kbps > 0` → Full GC 后堆仍在增长，结合老年代趋势判断是否为泄漏或静态缓存增长
+- **注意**：`confidence: low` 时（样本不足，通常 < 10 个 GC 事件；或缺少 `numpy`/`scipy`），不输出泄漏风险判断
+
+### Step 2c: VM Operations & Pause Interval Check
+
+- `vm_operations.max_ms` > 200ms → 单个非 GC safepoint 极长
+- `vm_operations.total_ms` / `estimated_runtime_ms` > 1% → 非 GC safepoint 累计时间占运行时间比例过高
+- `pause_intervals_ms.min` < 100ms → 两次 GC 间隔极短
+- `pause_intervals_ms.p95` / `avg` > 3x → 间隔高度不规则
+- `pause_intervals_ms.avg` 明显偏低（如 < 1 秒）→ 分配速率突增或 GC 压力高。判断"持续下降"需手动切分时间窗口对比，parser 单次输出不提供趋势序列
+
+### Step 3: Health Overview
 
 Summarize in 3-5 bullet points:
 - Overall GC pressure level (Low / Moderate / High / Critical)
@@ -125,64 +161,42 @@ Summarize in 3-5 bullet points:
 - The most significant anomaly category
 - Time windows where problems concentrate
 
-#### Load Pattern Inference (must include in executive summary)
+### Step 3c: GC Efficiency Check
 
-Based on GC frequency stability, pause time distribution, and memory usage trends, infer the application's workload pattern:
+读取 `gc_efficiency`，作为健康评估的参考维度：
 
-**Sustained High Pressure**
-- Signals: GC frequency consistently high (>15/min) with little variance; pause times gradually worsen; heap usage climbs steadily between GCs; no quiet periods.
-- What it means: The application is under constant heavy load — likely a high-throughput service processing requests at capacity. GC pressure is not caused by a burst but by sustained allocation rate exceeding collection rate.
-- Example: "GC occurs every 3-4 seconds like clockwork, with Young GC pauses growing from 8ms to 100ms over 30 seconds. This indicates the application is running flat-out, not handling a temporary spike."
+- `avg_performance_mbps < 0.1` → 可能正在 thrashing（高频率、极低单产）
+- `full_gc_performance_mbps` >> `regular_gc_performance_mbps` → 普通 GC 回收能力不足的警告信号
+- `freed_mem_per_minute` 低但 `gc_frequency_per_minute` > 20 → 分配速率可能超过 GC 吞吐能力
 
-**Occasional Peaks / Bursts**
-- Signals: GC frequency has a clear baseline (e.g., 2-5/min) with sudden clusters of frequent GC; long pauses are isolated and correlated with specific timestamps; heap usage spikes then recovers.
-- What it means: The application has a normal steady-state load, but experiences periodic bursts — possibly scheduled jobs, batch processing, traffic spikes, or cache warming.
-- Example: "GC runs every 15-20 seconds normally, but at 10:23:45 there were 5 GCs in 10 seconds with a 400ms pause. This isolated burst suggests a specific event (batch job, cache refresh, or traffic spike) rather than systemic overload."
+### Step 3d: GC Cause Distribution Check
 
-**Idle / Low Load with Background Pressure**
-- Signals: GC frequency very low (<1/min); pauses are short; heap usage is stable or slowly creeping up; occasional long pause when GC finally triggers.
-- What it means: The application is mostly idle, but some background process (timer, heartbeat, scheduled task) allocates objects periodically. A slowly creeping heap may indicate a minor leak that only becomes visible over long idle periods.
-- Example: "Only 3 GCs in 5 minutes, each <20ms. Heap sits at 30% with gradual 1% per hour growth. The system is nearly idle, but the slow heap growth warrants monitoring for a small leak."
+读取 `gc_causes`，分析触发原因分布：
 
-**Bimodal / Cyclic Pattern**
-- Signals: GC metrics oscillate between two distinct states (e.g., quiet periods with rare GC, then intense GC bursts); pattern repeats at regular intervals.
-- What it means: The application has distinct load phases — possibly day/night cycles, on/off-peak traffic, or alternating batch and real-time processing.
-- Example: "GC is quiet for 10 minutes (1 GC/min), then suddenly 20 GCs/min for 2 minutes. This 12-minute cycle matches a known batch job schedule."
+- "Metadata GC Threshold" 频繁 → Metaspace 增长模式，关注启动期 vs 稳态分布
+- "GCLocker Initiated GC" 频繁 → JNI critical section 使用模式
+- "System.gc()" 出现 → 代码中可能存在显式调用
+- 任一原因的 `avg_pause_ms` > 2x 整体 avg → 该原因触发的 GC  disproportionately expensive
 
-**Diurnal / Time-of-Day Pattern**
-- Signals: Metrics change dramatically based on time of day (e.g., timestamps show morning vs. evening).
-- What it means: Business-hours traffic pattern. GC issues may only manifest during peak hours.
-- Example: "From 02:00-06:00, GC pauses average 15ms. From 09:00-18:00, they average 120ms with frequent Full GCs. The problem is load-dependent, not a code leak."
+#### 负载模式推断（必须包含在执行摘要中）
 
-> **Important**: Always state your confidence level (high/medium/low) and what additional data would strengthen the inference (e.g., application QPS metrics, CPU usage, business event logs).
+根据 GC 频率、暂停分布和内存趋势推断应用负载模式（持续高压/偶尔峰值/空闲低负载/周期性波动/昼夜模式），声明置信度（高/中/低）。
 
-### Step 5: Time Context & Startup Period Analysis
+### Step 4: Time Context & Startup Period Analysis
 
-Before concluding Phase 1, you **must** perform a temporal context check. This step prevents the critical mistake of misinterpreting startup-phase behaviors as steady-state problems.
+Phase 1 结束前必须做时间上下文检查，防止将启动期行为误判为稳态问题。
 
-**Why startup is different:**
-- JIT compilation is warming up (C1 → C2, deoptimization spikes)
-- Metaspace is being populated (class loading storm)
-- Adaptive collectors (G1, Parallel) are learning heap sizing
-- OS page caches are cold, memory may need zeroing
-- Native libraries may be initializing
+启动期定义：JVM 启动后前 3-5 分钟，或前 ~30 个 GC 事件（取较大者）。
 
-**Checklist:**
-1. **Log span**: How long does the log cover? (Minutes, hours, days?)
-2. **Anomaly timing**: When do anomalies occur relative to JVM startup? Use `seconds_since_startup` and `in_startup_period` from the parser output.
-3. **Startup period definition**: First 3-5 minutes after JVM start, or the first ~30 GC events (whichever is larger).
-4. **Compare startup vs steady state**: Use the parser's `startup_analysis` output to contrast metrics between the two phases. Look for systematic differences — any metric that differs significantly between the two phases is a candidate explanation for startup-only anomalies.
-5. **Question your assumptions**: If an anomaly only occurs during startup, the root cause is likely not "GC needs tuning" but "startup-phase interference."
+检查：
+1. 日志覆盖多长（分钟/小时/天）
+2. 异常时间：使用 parser 的 `seconds_since_startup` 和 `in_startup_period`（若存在；uptime-only 日志可能缺失）
+3. 对比 `startup_analysis` 中启动期与稳态的指标差异（字段可能缺失，取决于日志格式和详细程度）
 
-**Decision Rule:**
-- If **all** long pauses occur within the first 5 minutes → classify as **startup-phase issue**, not a tuning issue
-- If long pauses occur **both** in startup and steady state → systemic problem
-- If long pauses occur **only** in steady state → true tuning/degradation issue
-
-**Action:**
-- For startup-only issues: explain *why* startup is different, identify which startup-phase mechanisms are responsible, and advise whether the issue will self-resolve
-- For systemic issues: proceed to Phase 2 deep dive with full severity
-- For steady-state-only issues: proceed to Phase 2, focus on sustained workload factors
+判断与行动：
+- **启动期异常** → 在 Report 中明确标注「启动期」。分析深度由 AI 自行判断。无论哪种情况，**调优建议优先级下调**。核心关注点是"该启动期机制是否会自恢复、是否会在稳态复现"
+- **启动期和稳态都有** → 系统性问题。按全 severity 进入 Phase 2
+- **仅在稳态出现** → 真正的调优/退化问题。进入 Phase 2，聚焦持续负载因素
 
 ## Phase 2: Deep Dive
 
@@ -191,48 +205,100 @@ For each anomaly flagged in Phase 1, perform a root-cause analysis.
 ### Step 1: Prioritize Anomalies
 
 Sort by impact:
-1. **Allocation stalls / Full GCs** — application threads blocked
+1. **零容忍异常**（Allocation stalls、Full GCs、To-space exhausted、Degenerated GC、Humongous allocation、Concurrent mark overflow）— application threads blocked or concurrent GC failed
 2. **Long STW pauses** — tail latency impact
 3. **Frequent GC** — throughput impact
 4. **Memory pressure trends** — risk of future failures
 
 **Startup-period adjustment**: If a long pause occurred within the first 5 minutes of JVM startup, downgrade its priority *for tuning recommendations* but **not** for root-cause explanation. The question shifts from "how do I tune GC?" to "what startup-phase mechanism caused this, and will it recur in steady state?"
 
-Always answer these three questions for startup anomalies:
-- What startup-phase mechanism explains this pause? (JIT, class loading, adaptive sizing, cold caches)
-- Does the evidence support steady-state recurrence? (Check if the same pattern appears after minute 5)
-- Should the user take action, or will it self-resolve?
-
 ### Step 2: Extract Complete Trace
 
-Locate the full GC event in the raw log. For a significant pause, you need:
-- The complete log lines for that single GC event (may span 10-50 lines for G1)
-- 2-3 events immediately before and after (for trend context)
-- The exact timestamp and line number range
+获取每个异常事件的原始日志证据：
+
+- **对于 parser 标记的零容忍异常**（`anomalies` 数组中的事件）：使用 `--anomalies --context-lines N` 直接获取附带上下文的输出
+- **对于长停顿**：从 `top_pauses` 中找超过阈值的事件，用其 `line_number` 提取 `--window-start-line` / `--window-end-line`
+- **对于 Full GC**：从 `full_gc_events` 中提取每个事件的上下文
+- **对于 Mixed GC 低效**：从 `top_by_type` 的对应类型中找最长事件提取上下文
+- **对于 Metaspace/GCLocker 频繁触发**：从 `top_by_cause` 的对应 cause 中提取上下文
+- **对于频繁 GC**：从 `gc_cadence` 找 `gc_count` 突增的分钟窗口，按时间提取
+- **对于堆泄漏**：`heap_samples` 提供趋势验证，通常不需要提取特定窗口（趋势是全局的）
+- **对于 VM 操作开销**：从 `safepoint_events` 中提取高 `non_gc_pause_ms` 事件的上下文
+- **对于晋升风暴**：从 `promotion_spikes` 中提取具体事件上下文
+- 如需更宽范围：完整 GC 事件（G1 可能跨 10-50 行）+ 前后 2-3 个事件（趋势上下文）
+- 记录精确的时间戳和行号范围
 
 ### Step 3: Phase Breakdown
 
-Break down the pause into its constituent phases. For example, a G1 Young GC:
+按收集器拆解停顿，找出占主导地位的 phase 或环节。
 
-```
-[0.234s][info][gc] GC(42) Pause Young (Normal) (G1 Evacuation Pause) 128M->64M(256M) 12.345ms
-[0.234s][info][gc] GC(42) Phase 1: Mark live objects 2.1ms
-[0.236s][info][gc] GC(42) Phase 2: Prepare for compaction 1.3ms
-[0.238s][info][gc] GC(42) Phase 3: Adjust pointers 3.2ms
-[0.241s][info][gc] GC(42) Phase 4: Compact heap 5.7ms
-```
+**G1GC**（JDK 8 和 JDK 9+）：
+- 检查 `g1_detail_phases`，找出平均耗时最长的 phase
+- 常见瓶颈及诊断方向：
+  - `Object Copy` 占比最高 → 存活对象量大，检查 `promotion` 和对象生命周期
+  - `Ext Root Scanning` > 10ms → 线程数过多或 JNI/global reference 膨胀
+  - `Update RS` > 10ms → 跨 region 引用更新频繁
 
-Identify which phase dominates the pause time. This is the key to root cause.
+**ZGC**：
+- STW phases 在 `pause_by_type` 中：对比 Pause Mark End / Pause Relocate End / Pause Mark Start 的耗时分布
+- 若 STW 低但 `metrics.cycle_avg_ms` 高 → 并发阶段是瓶颈（老年代对象图大）
+- 检查 `metrics.allocation_stall_count`：分配停顿比 STW 更直接影响可用性
 
-Read `references/gc_algorithms.md` for the phase breakdown structure of each collector.
+**Shenandoah**：
+- STW phases 在 `pause_by_type` 中：对比 Init Mark / Final Mark / Init Update Refs / Final Update Refs
+- 若 `anomaly_counts.degenerated_gc` > 0 → 并发失败，检查 `concurrent_cycles` 的耗时和模式
+- `Final Mark` 占比过高 → 并发标记阶段未完成，老年代存活率过高
+
+**Parallel / Serial**：
+- 无 phase 分解。直接分析 `full_gc_events` 和 `top_pauses`
+- 关注 `gc_causes` 中触发原因的分布
+
+若 `full_gc_summary` 存在：
+- Full GC 次数 > 0 时，无论停顿多长，**必须标记为 P0 问题**
+- 对比 `full_gc_summary.avg_pause_ms` 与整体 `avg_pause_ms`，评估 Full GC 对总停顿的贡献
+- 若 `full_gc_summary.total_freed_mb` 存在，评估 Full GC 的内存回收效率
+
+### Step 3b: Collector-Specific Deep Dive
+
+**ZGC**：
+- 分配停顿分析：检查 `metrics.allocation_stall_count` 和 `allocation_stall_ms`
+  - stall 次数 > 0 → P0 问题，优先增大堆
+- 并发周期分析：检查 `metrics.cycle_*`（cycle_avg_ms / cycle_max_ms）
+  - cycle 时间逐段增长 → 老年代对象图膨胀，检查是否有超大对象树
+- MMU 检查：`metrics.mmu` 中各窗口的达标率
+
+**Shenandoah**：
+- 退化 GC 分析：检查 `anomaly_counts.degenerated_gc`
+  - 任何非零值 → 并发失败，检查 `concurrent_cycles` 的耗时和模式
+- STW phases 分布：从 `pause_by_type` 看 Init Mark / Final Mark / Update Refs 的比例
+  - Final Mark 占比过高 → 并发标记阶段未完成，老年代存活率过高
 
 ### Step 4: Contextual Analysis
 
-Examine the surrounding events:
-- Is this an isolated spike or part of a sustained pattern?
-- What was the heap state before the GC? (High occupancy reduces headroom for concurrent phases.)
-- Was there a burst of allocation immediately before?
-- For G1: was this preceded by a series of concurrent marking cycles?
+分析异常事件的上下文，判断它是孤立 spike 还是系统性问题的一部分。以下维度是常见分析角度，**不穷尽**——你应结合所有可用数据主动发现其他关联。
+
+**时间维度**（数据来源：`timestamp`, `seconds_since_startup`, `gc_cadence`, `pause_intervals_ms`）：
+- 是否发生在启动期？→ 查 `in_startup_period`
+- 前后是否有同类事件密集发生？→ 查 `gc_cadence` 中该时间窗口的 `gc_count`
+- 参考：前后 5 分钟内多次同类事件 → 倾向持续模式；孤立一次 → 倾向 spike
+
+**堆状态维度**（数据来源：`heap_before_mb`, `heap_after_mb`, `heap_trigger_stats`, `heap_trend`）：
+- GC 前堆是否接近满堆？→ 对比 `heap_before_mb` 与 `heap_trigger_stats` 的范围
+- GC 后回收幅度是否正常？→ `heap_before_mb - heap_after_mb`，若 < 10% 则回收效率极低
+- 是否发生在堆增长加速期？→ 对比事件时间与 `heap_samples` 的陡峭上升段
+
+**前置并发周期（G1/ZGC/Shenandoah）**（数据来源：`concurrent_cycles`）：
+- 事件前 30 秒内是否有并发周期结束？
+- `concurrent_cycles.reset_for_overflow_count` > 0 → 标记与当前事件的潜在关联
+
+**异常间因果关联**（数据来源：`anomalies`, `top_pauses`, `full_gc_events`）：
+- `concurrent_mark_overflow` 后是否跟随 Full GC / 长 Mixed GC？（按时间戳关联）
+- `to_space_exhausted` 后是否跟随 Full GC？
+- 多个异常的时间是否集中？（同一分钟内多个异常 → 系统性压力）
+
+**与 Phase 1 趋势的对齐**：
+- Phase 1 识别的每个趋势（泄漏、频率升高、Mixed GC 低效等）应在 Phase 2 得到解释
+- 如果某个异常无法解释 Phase 1 的趋势 → 可能遗漏了关联事件，或需要更宽的时间窗口
 
 ### Step 5: Root Cause & Recommendation — The Reasoning Chain
 
@@ -241,90 +307,14 @@ For each anomaly, build a **reasoning chain** that walks from the observed pheno
 **Required structure for every root cause explanation:**
 
 ```
-1. 现象（Observed Phenomenon）: 从日志中看到什么具体数据
-2. 机制（GC Mechanism）: 这个 GC phase/指标在正常情况下做什么，什么因素会影响它的耗时
-3. 推导（Deduction）: 结合日志中的其他证据，一步步推导出为什么会这样
+1. 现象（Observed Phenomenon）: 从数据中看到什么具体异常（单个事件的数值 / 一段时间的模式）
+2. 机制（GC Mechanism）: 这个 GC phase/指标正常情况下做什么，什么因素会影响它的表现
+3. 推导（Deduction）: 结合其他证据（日志片段 / 聚合指标），一步步推导出为什么会这样
 4. 根因（Root Cause）: 最终的根因判断
 5. 验证（Validation）: 这个根因是否能解释所有观察到的现象
 ```
 
-**Example — G1GC Evacuation Phase Dominating Pause:**
 
-*现象*: Evacuate Collection Set 耗时 78.2ms，占总 pause 95%。
-
-*机制*: 
-- **什么是 Collection Set (CSet)**：CSet 是本次 GC 决定回收的一组 region，通常包含所有 Eden region 和部分 Survivor/Old region。
-- **什么是 Evacuation**：GC 遍历 CSet 中所有存活对象，把它们复制到新分配的 region 中。Eden 中的存活对象 → Survivor；Survivor 中熬过多轮 GC 的对象 → Old Gen。
-- **什么因素决定 evacuation 耗时**：(1) CSet 中存活对象的数量和大小；(2) 对象之间的引用复杂度（需要更新引用）；(3) 可用的空闲 region 是否充足（如果不足，需要额外分配，耗时增加）。
-
-*推导*:
-- 观察 1: evacuation 占 95% → 问题出在对象复制阶段。
-- 观察 2: GC 后 Eden 从 64 regions 降到 0，但 Survivor 从 24 膨胀到 32 → 说明 Eden 中大量对象存活了下来，需要被复制到 Survivor。
-- 观察 3: Survivor 持续膨胀（24→32→40）→ 这些对象在 Survivor 中熬过一轮又一轮，迟迟未能被回收或晋升到老年代。
-- 观察 4: 老年代 region 数始终 128，没有减少 → 老年代也没有被有效回收。
-- 综合: 大量短生命周期对象没有被及时回收，导致每次 Young GC 都需要复制大量数据。Survivor 空间不足时，触发 to-space exhausted。
-
-*根因*: **存活对象率过高 + Survivor 空间不足**。可能原因：(a) 应用分配了大量临时大对象；(b) 某些对象的生命周期比预期长（如缓存、会话）；(c) 堆太小，Survivor 空间被压缩。
-
-*验证*: 这个根因同时解释了：(1) evacuation 时间长；(2) Survivor 膨胀；(3) to-space exhausted；(4) 最终 Full GC。如果是单纯分配速率问题，evacuation 时间会随对象大小波动；但这里 Survivor 持续膨胀，说明是存活率问题。
-
----
-
-**Example — ZGC Allocation Stall:**
-
-*现象*: Allocation stall 30.5ms，应用线程被阻塞。
-
-*机制*:
-- **ZGC 如何分配对象**：ZGC 使用 page-based 分配。应用线程从当前 page 的顶部 bump-pointer 分配对象。
-- **什么时候会 stall**：当当前 page 已满，且 GC 的 concurrent relocate 尚未释放足够的空 page 时，应用线程必须等待。
-- **为什么 ZGC 选择 stall 而不是 OOM**：ZGC 的设计目标是在并发阶段完成几乎所有工作，但并发阶段需要时间。如果分配速率超过并发回收速率，就只能阻塞分配者。
-
-*推导*:
-- 观察 1: Mark Start 时堆始终 100% 满 → 几乎没有空闲 page。
-- 观察 2: Relocate End 后只降到 87% → GC 回收的效率在下降（GC200 能降到 75%，GC201+ 只能降到 87%）。
-- 观察 3: Stall 时间从 15ms 恶化到 30ms → 等待时间越来越长，说明回收越来越跟不上分配。
-- 综合: 存活对象集在增长，或者分配速率在增加，导致 ZGC 的并发 relocate 无法及时释放足够空间。
-
-*根因*: **堆空间相对于存活对象集 + 分配速率来说不足**。不是 ZGC 的 STW pause 问题（STW 确实 <1ms），而是并发回收的吞吐量不够。
-
-*验证*: 如果增大堆到 16GB，Mark Start 时堆使用率降到 50%，allocation stall 应该消失。如果 stall 依然存在，说明是分配速率突增或内存泄漏。
-
----
-
-**Quick Reference for Common GC Behaviors**
-
-| 观察到的现象 | 背后的 GC 机制 | 可能的根因方向 |
-|-------------|--------------|--------------|
-| Survivor 区域持续膨胀 | 对象在 Survivor 中熬过多次 GC 仍未被回收或晋升 | 短生命周期对象过多；对象生命周期被延长（缓存、session）；Survivor 空间不足 |
-| Eden regions 每次 GC 后恢复数量减少 | Eden 空间被压缩，GC 触发更频繁 | 堆整体不足；老年代占用挤压了 Eden 空间 |
-| Evacuation 时间占总 pause 的 80%+ | 存活对象量大，复制成本高 | 存活率过高；对象体积大；引用关系复杂 |
-| Pre Evacuate 时间长 | Root set 扫描耗时 | 线程数多；JNI/global reference 多 |
-| Post Evacuate 时间长 | Remembered set 更新、清理 | 跨 region 引用多；card table 扫描量大 |
-| Concurrent Mark 时间长 | 遍历的对象图大 | 老年代存活对象多；存在深引用链 |
-| Full GC 后老年代残留持续增长 | 每次 Full GC 都有对象无法回收 | 内存泄漏；静态缓存持续增长；session 未过期 |
-| Allocation stall 持续恶化 | 并发回收速率 < 分配速率 | 堆不足；分配速率增加；存活对象集增长 |
-| ZGC heap 使用率 Mark Start 始终 >90% | 几乎没有 headroom 给并发阶段 | 堆太小；泄漏；或应用设计需要更大堆 |
-| 启动期 CPU 利用率显著低于稳定期 (>20% gap) | GC 线程与启动期活动竞争 CPU | JIT 编译、类加载、native 初始化；检查容器 CPU limit |
-| 启动期 Worker Start Diff >10ms | GC worker 线程启动/调度延迟高 | OS 调度器压力；容器环境；减少 ParallelGCThreads |
-| 非 GC safepoint 停顿 (>100ms) 且 `Stopping threads` 很小 | VM 操作（非 GC）导致 STW | 偏向锁撤销、类重定义、Deoptimization；加 `-XX:+PrintGCApplicationStoppedTime` 确认 |
-
----
-
-**Tuning Recommendations by Pattern**
-
-**G1GC:**
-- *Long evacuation phase + to-space exhausted*: 存活对象率过高或 Survivor 不足。先检查对象生命周期（是否有过期缓存），再考虑增大堆或 `-XX:SurvivorRatio`。
-- *Frequent Full GC with high old-gen occupancy*: 并发标记跟不上。降低 `-XX:InitiatingHeapOccupancyPercent`（如从 45 降到 35），让标记更早启动。
-- *Humongous allocations dominating*: 增大 `-XX:G1HeapRegionSize`（2 的幂次：1M, 2M, 4M...32M）。注意 region 大小决定 humongous 阈值（>= 1/2 region size）。
-
-**ZGC:**
-- *Allocation stalls*: 增大堆是最有效的手段。如果业务负载稳定但 stall 出现，优先增大堆；如果负载在增长，需排查泄漏。
-- *Long concurrent mark*: 老年代对象图大。检查是否有超大对象树或深层嵌套结构。
-
-**General principles:**
-- Always prefer increasing heap size before adding GC threads (more threads = more CPU contention).
-- Memory leaks are diagnosed by sustained upward trend in old-gen occupancy across multiple full cycles, not by a single high value.
-- For latency-sensitive applications, the 99th percentile pause matters more than average pause.
 
 ## Report Template
 
@@ -334,50 +324,129 @@ ALWAYS output the final analysis using this structure:
 # GC 诊断报告：{一句话结论}
 
 ## 1. 执行摘要
-- GC 算法：{类型}（JDK {版本推断}）
-- 整体健康度：{优秀/良好/警告/严重}
-- 负载特征：{持续高压/偶尔峰值/空闲低负载/周期性波动}（置信度：{高/中/低}）
-- 核心问题：{1-2句话概括最严重的发现}
+- **GC 算法**：{类型}（JDK {版本推断}）
+- **日志覆盖**：{时长}，共 {事件数} 个 GC 事件（启动期 {N} 个 / 稳定期 {M} 个）
+- **整体健康度**：{优秀/良好/警告/严重}
+- **关键健康观察**（即使是正常状态也列出，帮助读者快速建立整体认知）：
+  - {如"老年代无压力，100% Young GC，无 Mixed/Full GC"}
+  - {如"堆稳态稳定在 XGB/YGB，无泄漏迹象"}
+  - {如"并发标记周期健康，无 overflow"}
+- **负载特征**：{持续高压/偶尔峰值/空闲低负载/周期性波动}（置信度：{高/中/低}）
+- **核心问题**：{1-2 句话概括最严重的发现}
 
-## 2. 关键指标
+### 1.1 问题总览（按严重程度排序）
+
+**只包含 Phase 1 Step 2 标记的 anomaly**。健康评估的观察（如 GC efficiency、GC cause 分布）和正常指标，不要放入此表——它们在第 2 节（体检单）和第 4 节（趋势分析）中呈现。
+
+| # | 问题 | 类型 | 严重程度 | 详见 | 根因方向 |
+|---|------|------|---------|------|---------|
+| 1 | {问题简述} | 异常事件/趋势/模式 | P0/P1/P2 | 第 3.X / 4.X 节 | {根因方向} |
+| 2 | ... | ... | ... | ... | ... |
+
+> **严重程度定义**：P0 = 影响可用性或 SLA，必须立即处理；P1 = 影响性能或存在明确恶化趋势，建议本周内处理；P2 = 潜在风险或预防性优化。
+
+## 2. 关键指标（体检单）
+
+只列最核心的指标，不做展开解读。解读放在第 4 节对应子节。
+
 | 指标 | 值 | 评估 |
 |------|-----|------|
 | 吞吐量 | X% | {OK/警告/严重} |
 | 最大 STW 停顿 | Xms | {OK/警告/严重} |
+| **中位数停顿** | Xms | {OK/警告/严重} |
+| **P95 停顿** | Xms | {OK/警告/严重} |
 | P99 停顿 | Xms | {OK/警告/严重} |
 | GC 频率 | X 次/分钟 | {OK/警告/严重} |
 | Full GC 次数 | X | {OK/警告/严重} |
+| **暂停类型分布**（按 `pause_by_type`）| Mixed GC avg / Young GC avg = {ratio}x | {若 ratio > 2 为警告} |
+| **晋升量**（G1GC，`promotion.avg`）| X MB/次 | {若 > Survivor 空间大小 为警告} |
+| **VM 操作开销**（`vm_operations.total_ms`）| X ms（占总停顿 {X%}）| {若 > 10% 为警告} |
+| **内存效率**（`memory_efficiency.avg_freed_per_gc_mb`）| X MB/次 | {若 < 10 MB 且频率 > 20/min 为警告} |
+| **平均暂停间隔**（`pause_intervals_ms.avg`）| X ms | {若明显偏低（如 < 1s）或为警告；"持续下降"需多窗口对比验证} |
+| **并发周期平均耗时**（`concurrent_cycles.avg_duration_ms`）| X ms | {若 > 2000ms 为警告} |
 
-## 3. 异常事件分析
+> **整体评估**：{一句话总结系统整体状态，如"老年代无压力，堆稳定，GC 效率极高，系统处于健康状态。唯一关注点是启动期 470ms 峰值。"}
 
-### 事件 1：{简短描述}
-- **时间**：{timestamp}（日志第 X 行）
+## 3. 异常事件分析（详细病历）
+
+每个异常事件独立分析。如果事件与第 1.1 节的问题总览中的某条对应，请在标题中标注编号。
+
+### 事件 1 [#1]：{简短描述}
+- **严重程度**：{P0/P1/P2}
+- **时间**：{timestamp}（日志第 X 行，距启动 {T+Xm}）**【启动期 / 稳态】**
 - **原始日志**：
   ```
   {2-5 行原始日志}
   ```
-- **根因**：{结合 GC 原理解释为什么这一步慢}
-- **影响**：{对应用的具体影响}
-- **建议**：{调优方向}
+- **根因分析**：
+  1. **现象**：{从日志中看到什么具体数据，如"Object Copy 占 pause 的 82%（412ms/502ms）"}
+  2. **机制**：{这个 GC phase/指标正常情况下做什么，什么因素影响耗时}
+  3. **推导**：{结合日志中的其他证据，一步步推导为什么会这样}
+  4. **根因**：{最终判断}
+  5. **验证**：{这个根因是否能解释所有观察到的现象——如果还有无法解释的数据，说明分析不完整}
+- **影响**：{对应用的具体影响。如果是启动期事件，需明确说明这是启动期特有的行为，还是会在稳态复现的系统性问题}
 
 ### 事件 2：...
 
-## 4. 趋势与模式
-- {内存使用趋势}
-- {GC 频率/停顿时间趋势}
-- {是否为孤立事件 or 系统性问题}
+## 4. 趋势与模式分析（专科检查）
+
+本节对第 2 节指标进行**解读和关联分析**。针对第 1.1 节中标注为"趋势/模式"类型的问题，回答"这个数据说明什么"和"与其他指标有什么关联"。
+
+{根据问题总览中列出的趋势/模式问题，逐个组织子节。以下维度是常见分析角度，按需选择，不强制全部填写：}
+
+### 4.1 {问题名称，如"启动期 GC 频率骤降模式"}
+- **数据**：{相关指标的具体数值}
+- **说明**：{这个数据说明什么——不要罗列，要解释}
+- **关联**：{与其他指标的因果关系}
+
+### 4.2 {问题名称，如"堆增长后稳定模式"}
+...
+
+{可选参考维度（按需选择）：}
+- **GC 频率与停顿趋势**：`gc_cadence`、`pause_intervals_ms` —— 频率变化、间隔规律、孤立事件 vs 系统性问题
+- **堆内存趋势**：`heap_trend`、`heap_samples`、`heap_trigger_stats` —— 泄漏风险、增长斜率、触发占用
+- **并发周期健康度**：`concurrent_cycles` —— 周期时长、reset-for-overflow、与 STW 停顿的关联
+- **暂停类型分布**：`pause_by_type` —— Mixed vs Young 占比、avg/max/p95 对比
+- **VM 操作开销**：`vm_operations`、`safepoint_events` —— 非 GC safepoint 的频率与幅度
+- **GC 效率**：`gc_efficiency` —— thrashing 判断、Full GC vs 普通 GC 效率对比
+- **GC 触发原因分布**：`gc_causes` —— 原因占比、与暂停的关联
+- **Full GC 专项**：`full_gc_summary` —— 任何 Full GC 都是 P0
+- **晋升与内存效率**：`promotion`、`memory_efficiency` —— 晋升量、回收效率、暂停间隔四者关联
 
 ## 5. 优化建议（按优先级排序）
-1. {高优先级，通常解决最严重的问题}
-2. {中优先级}
-3. {低优先级或预防性措施}
+
+每条建议必须**引用前面的具体证据**，并给出**预期效果**和**验证方法**。
+
+### 5.1 {高优先级}：{建议标题}
+- **对应问题**：第 1.1 节 #X — {问题简述}
+- **证据**：{引用具体指标和数值，如"基于 4.4 中 pause_by_type 数据，Mixed GC 平均 380ms，占总暂停 30%"}
+- **根因**：{一句话解释为什么这个建议能解决该问题}
+- **具体建议**：{参数调整或架构修改}
+- **预期效果**：{量化预期，如"Mixed GC 平均耗时降至 Young GC 的 2 倍以内"}
+- **验证方法**：{如何确认建议生效，如"观察后续日志中 Mixed GC p95 是否 < 200ms"}
+
+### 5.2 {中优先级}：{建议标题}
+- **对应问题**：第 1.1 节 #X
+- **证据**：...
+- **根因**：...
+- **具体建议**：...
+- **预期效果**：...
+- **验证方法**：...
+
+### 5.3 {低优先级或预防性}：{建议标题}
+- **对应问题**：...
+- **证据**：...
+- **根因**：...
+- **具体建议**：...
+- **预期效果**：...
+- **验证方法**：...
 ```
 
 ## Critical Reminders
 
-1. **Never skip Phase 1.** Even if the user points to a specific long pause, always provide the global context first.
-2. **Cite evidence for every claim.** "Long pause" is not enough — say "Pause of 450ms at 10:23:45 (line 1242), driven by 380ms evacuation phase."
-3. **Explain the why.** Don't just say "increase heap" — explain that "the concurrent marking cycle couldn't complete before old gen filled, forcing a Full GC. A larger heap gives the concurrent phase more headroom."
-4. **Distinguish correlation from causation.** High GC frequency after a deployment might be due to new code allocating more, not a GC tuning issue.
-5. **Be honest about uncertainty.** If the log doesn't contain enough information to determine root cause (e.g., missing JVM args), say so and explain what additional information would help.
-6. **Always check startup period first.** Before treating any anomaly as a tuning target, verify whether it occurred during the first 3-5 minutes of JVM startup. Use the parser's `startup_analysis` and `seconds_since_startup` fields. A 1.4s pause at T+45s and a 1.4s pause at T+4 hours have completely different root causes and remedies.
+1. **Never skip Phase 1.**
+2. **Cite evidence for every claim.** 包含时间戳、行号和具体数值。
+3. **Explain the why.** 不要只给结论，解释背后的 GC 机制。
+4. **Distinguish correlation from causation.**
+5. **Be honest about uncertainty.** 信息不足时明确说明，并指出需要什么额外数据。
+6. **Always check startup period first.** 用 parser 的 `startup_analysis` 和 `seconds_since_startup` 验证异常是否发生在启动期。

@@ -14,6 +14,7 @@ Usage:
 """
 
 import argparse
+import gzip
 import json
 import re
 import sys
@@ -21,6 +22,10 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 import statistics
 from pathlib import Path
+
+from model import GCPhase
+from filter import LineFilter
+from trend import HeapTrendAnalyzer
 
 
 def detect_format(line):
@@ -38,6 +43,38 @@ def detect_format(line):
     if re.match(r"^\[\d+\.\d+s\]\s*\[GC", line):
         return "jdk8_legacy"
     return None
+
+
+def detect_format_enhanced(filepath: str) -> str:
+    """GCViewer-style format detection: multi-chunk + multi-feature matching + GZIP."""
+    path = Path(filepath)
+    if not path.exists():
+        return "unknown"
+
+    # Detect GZIP via magic bytes
+    is_gz = False
+    with open(path, "rb") as f:
+        magic = f.read(2)
+        is_gz = magic == b"\x1f\x8b"
+
+    opener = gzip.open if is_gz else open
+    with opener(path, "rt", encoding="utf-8", errors="ignore") as f:
+        # Read up to 100 chunks of 4KB (like GCViewer)
+        for _ in range(100):
+            chunk = f.read(4096)
+            if not chunk:
+                break
+
+            # Multi-feature matching (priority order)
+            if "][gc" in chunk or "][safepoint" in chunk:
+                return "jdk9_unified"
+            if " (young)" in chunk or " (mixed)" in chunk or "G1Ergonomics" in chunk:
+                return "jdk8_legacy"
+            if "[Times:" in chunk or "[Pause Init Mark" in chunk:
+                return "jdk8_legacy"
+            if "[GC" in chunk or "[Full GC" in chunk:
+                return "jdk8_legacy"
+    return "unknown"
 
 
 def detect_collector(line, current_format):
@@ -86,6 +123,18 @@ ZGC_STALL_STATS_PATTERN = re.compile(
     r"Critical:\s+Allocation\s+Stall\s+([\d.]+)\s+/\s+([\d.]+)\s+ms"
 )
 
+# JDK 9+ G1GC [gc,phases] detail phases
+# Matches: GC(42) Pre Evacuate Collection Set: 0.2ms
+#          GC(42)   Object Copy: 6.5ms
+JDK9_G1_PHASE_PATTERN = re.compile(
+    r"GC\((\d+)\)\s+([A-Za-z][A-Za-z\s]*?)\s*:\s+([\d.]+)\s*ms"
+)
+# Extract GC cause from JDK 9+ unified logging lines like:
+# [gc] GC(42) Pause Young (Normal) (G1 Evacuation Pause) 12.345ms
+JDK9_CAUSE_PATTERN = re.compile(
+    r"Pause\s+\w+(?:\s+\([^)]*\))?\s+\(([^)]+)\)"
+)
+
 JDK9_TIME_PATTERN = re.compile(
     r"\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+(?:[+-]\d{2}:?\d{2})?)\]"
 )
@@ -117,7 +166,7 @@ JDK8_FULL_GC_PATTERN = re.compile(
 JDK8_HEAP_LINE = re.compile(
     r"\[Eden:\s+([\d.]+)([KMGTB]?)\([^)]+\)->([\d.]+)([KMGTB]?)\([^)]+\)\s+"
     r"Survivors:\s+([\d.]+)([KMGTB]?)\s*->\s*([\d.]+)([KMGTB]?)\s+"
-    r"Heap:\s+([\d.]+)([KMGTB]?)\([^)]+\)->([\d.]+)([KMGTB]?)\([^)]+\)\]"
+    r"Heap:\s+([\d.]+)([KMGTB]?)\(([^)]+)\)->([\d.]+)([KMGTB]?)\(([^)]+)\)\]"
 )
 # Match Metaspace line
 JDK8_METASPACE_LINE = re.compile(
@@ -186,6 +235,197 @@ def parse_jdk8_timestamp(line):
     return None
 
 
+class Jdk8G1EventParser:
+    """State machine parser for multi-line G1 GC events in JDK 8 legacy logs."""
+
+    # Phase patterns for G1 detail lines
+    PHASE_PATTERNS = {
+        'parallel_time': re.compile(r'\[Parallel Time:\s+([\d.]+)\s*ms'),
+        'gc_workers': re.compile(r'GC Workers:\s+(\d+)'),
+        'ext_root_scanning': re.compile(r'\[Ext Root Scanning \(ms\):\s+Min:\s+([\d.]+)'),
+        'update_rs': re.compile(r'\[Update RS \(ms\):\s+Min:\s+([\d.]+)'),
+        'scan_rs': re.compile(r'\[Scan RS \(ms\):\s+Min:\s+([\d.]+)'),
+        'code_root_scanning': re.compile(r'\[Code Root Scanning \(ms\):\s+Min:\s+([\d.]+)'),
+        'object_copy': re.compile(r'\[Object Copy \(ms\):\s+Min:\s+([\d.]+)'),
+        'termination': re.compile(r'\[Termination \(ms\):\s+Min:\s+([\d.]+)'),
+        'code_root_fixup': re.compile(r'\[Code Root Fixup:\s+([\d.]+)\s*ms'),
+        'code_root_purge': re.compile(r'\[Code Root Purge:\s+([\d.]+)\s*ms'),
+        'clear_ct': re.compile(r'\[Clear CT:\s+([\d.]+)\s*ms'),
+        'choose_cset': re.compile(r'\[Choose CSet:\s+([\d.]+)\s*ms'),
+        'ref_proc': re.compile(r'\[Ref Proc:\s+([\d.]+)\s*ms'),
+        'ref_enq': re.compile(r'\[Ref Enq:\s+([\d.]+)\s*ms'),
+        'redirty_cards': re.compile(r'\[Redirty Cards:\s+([\d.]+)\s*ms'),
+        'free_cset': re.compile(r'\[Free CSet:\s+([\d.]+)\s*ms'),
+        'humongous_register': re.compile(r'\[Humongous Register:\s+([\d.]+)\s*ms'),
+        'humongous_reclaim': re.compile(r'\[Humongous Reclaim:\s+([\d.]+)\s*ms'),
+    }
+
+    # Event start/end patterns
+    GC_START_PATTERN = re.compile(r'\[GC pause \((.+?)\)\s+\(?(\w+)')
+    FULL_GC_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[^:]*:\s+\[Full GC')
+    TIMES_PATTERN = re.compile(r'\[Times:\s+user=[\d.]+\s+sys=[\d.]+,\s+real=([\d.]+)\s+secs\]')
+    SIMPLE_PAUSE_PATTERN = re.compile(r',\s+([\d.]+)\s+secs\]\s*$')
+
+    def __init__(self):
+        self.pending = None
+        self.start_line = 0
+        self.raw_lines = []
+        self.phases = []
+        self.gc_workers = None
+        self.object_copy = None
+        self.worker_start = None
+        self.times_detailed = None
+
+    def feed_line(self, line: str, line_num: int, ts) -> dict:
+        """Process a line and return a complete GC event dict, or None."""
+        # Check for GC event start
+        m = self.GC_START_PATTERN.search(line)
+        if m:
+            # Finalize any existing pending event without proper end
+            result = self._finalize_if_pending(ts)
+            self.pending = {
+                'trigger': m.group(1),
+                'gen': m.group(2),
+                'line': line_num,
+                'timestamp': str(ts) if ts else None,
+                'is_full_gc': False,
+            }
+            self.start_line = line_num
+            self.raw_lines = [line]
+            self.phases = []
+            self.gc_workers = None
+            self.object_copy = None
+            self.worker_start = None
+            self.times_detailed = None
+            return result
+
+        # Check for Full GC start
+        m = self.FULL_GC_PATTERN.match(line)
+        if m:
+            result = self._finalize_if_pending(ts)
+            self.pending = {
+                'trigger': 'Full GC',
+                'gen': 'full',
+                'line': line_num,
+                'timestamp': str(ts) if ts else None,
+                'is_full_gc': True,
+            }
+            self.start_line = line_num
+            self.raw_lines = [line]
+            self.phases = []
+            return result
+
+        if not self.pending:
+            return None
+
+        self.raw_lines.append(line)
+
+        # Check for event end markers
+        m = self.TIMES_PATTERN.search(line)
+        if m:
+            self.pending['pause_sec'] = float(m.group(1))
+            return self._finalize(ts)
+
+        # Simple trailing pause (for non-G1 styles that might match)
+        m = self.SIMPLE_PAUSE_PATTERN.search(line)
+        if m and not self.pending.get('pause_sec') and ('[GC' in line or '[Full GC' in line):
+            self.pending['pause_sec'] = float(m.group(1))
+            return self._finalize(ts)
+
+        # Extract detail phases
+        self._extract_phases(line)
+
+        return None
+
+    def _extract_phases(self, line: str):
+        for phase_name, pattern in self.PHASE_PATTERNS.items():
+            m = pattern.search(line)
+            if m:
+                val = float(m.group(1))
+                if phase_name == 'gc_workers':
+                    self.gc_workers = int(val)
+                elif phase_name == 'object_copy':
+                    # Try to extract all stats if available
+                    full_match = re.search(
+                        r'\[Object Copy \(ms\): Min:\s+([\d.]+), Avg:\s+([\d.]+), Max:\s+([\d.]+), Diff:\s+([\d.]+), Sum:\s+([\d.]+)\]',
+                        line
+                    )
+                    if full_match:
+                        self.object_copy = {
+                            'min': float(full_match.group(1)),
+                            'avg': float(full_match.group(2)),
+                            'max': float(full_match.group(3)),
+                            'diff': float(full_match.group(4)),
+                            'sum': float(full_match.group(5)),
+                        }
+                elif phase_name == 'ext_root_scanning':
+                    # Try full format with all stats
+                    full_match = re.search(
+                        r'\[Ext Root Scanning \(ms\): Min:\s+([\d.]+), Avg:\s+([\d.]+), Max:\s+([\d.]+), Diff:\s+([\d.]+), Sum:\s+([\d.]+)\]',
+                        line
+                    )
+                    if full_match:
+                        self.phases.append(GCPhase('ext_root_scanning', float(full_match.group(2))))
+                    else:
+                        self.phases.append(GCPhase('ext_root_scanning', val))
+                elif phase_name == 'update_rs':
+                    full_match = re.search(
+                        r'\[Update RS \(ms\): Min:\s+([\d.]+), Avg:\s+([\d.]+), Max:\s+([\d.]+), Diff:\s+([\d.]+), Sum:\s+([\d.]+)\]',
+                        line
+                    )
+                    if full_match:
+                        self.phases.append(GCPhase('update_rs', float(full_match.group(2))))
+                    else:
+                        self.phases.append(GCPhase('update_rs', val))
+                elif phase_name == 'worker_start':
+                    full_match = re.search(
+                        r'\[GC Worker Start \(ms\): Min:\s+([\d.]+), Avg:\s+([\d.]+), Max:\s+([\d.]+), Diff:\s+([\d.]+)\]',
+                        line
+                    )
+                    if full_match:
+                        self.worker_start = {
+                            'min': float(full_match.group(1)),
+                            'avg': float(full_match.group(2)),
+                            'max': float(full_match.group(3)),
+                            'diff': float(full_match.group(4)),
+                        }
+                else:
+                    self.phases.append(GCPhase(phase_name, val))
+
+        # Also extract detailed [Times] info if present
+        m = JDK8_TIMES_DETAILED.search(line)
+        if m:
+            self.times_detailed = {
+                "user": float(m.group(1)), "sys": float(m.group(2)),
+                "real": float(m.group(3)),
+            }
+
+    def _finalize_if_pending(self, ts) -> dict:
+        if self.pending:
+            # Event was interrupted by a new start; use what we have
+            return self._finalize(ts)
+        return None
+
+    def _finalize(self, ts) -> dict:
+        event = self.pending
+        self.pending = None
+        result = {
+            'event': event,
+            'start_line': self.start_line,
+            'phases': self.phases,
+            'gc_workers': self.gc_workers,
+            'object_copy': self.object_copy,
+            'worker_start': self.worker_start,
+            'times_detailed': self.times_detailed,
+        }
+        self.phases = []
+        self.gc_workers = None
+        self.object_copy = None
+        self.worker_start = None
+        self.times_detailed = None
+        return result
+
+
 class GCLogAnalyzer:
     def __init__(self, filepath):
         self.filepath = Path(filepath)
@@ -214,9 +454,26 @@ class GCLogAnalyzer:
         # Safepoint tracking
         self.safepoint_events = []
         self._last_gc_real_time_sec = None
+        # NEW: G1 multi-line state machine
+        self._g1_parser = Jdk8G1EventParser()
+        # NEW: Concurrent cycle tracking
+        self.concurrent_cycles = []
+        self._pending_concurrent = None
+        # NEW: Heap trend analysis
+        self.heap_trend = HeapTrendAnalyzer()
+        # NEW: G1 detail phase stats
+        self.g1_detail_phases = defaultdict(list)
+        # NEW: Max heap for OOM estimation
+        self._max_heap_mb = None
+        # NEW: JDK 9+ G1 detail phases by gc_id
+        self._jdk9_phases_by_gc_id = defaultdict(list)
 
     def analyze(self):
         """Main analysis routine - single pass over the file."""
+        # Use enhanced format detection first
+        if self.format is None:
+            self.format = detect_format_enhanced(str(self.filepath))
+
         with open(self.filepath, "r", encoding="utf-8", errors="ignore") as f:
             for line_num, line in enumerate(f, 1):
                 self.line_count = line_num
@@ -224,8 +481,14 @@ class GCLogAnalyzer:
                 if not line.strip():
                     continue
 
-                if self.format is None:
-                    self.format = detect_format(line)
+                # Apply line filter to skip noise from verbose JVM flags
+                if LineFilter.should_skip(line):
+                    continue
+
+                if self.format is None or self.format == "unknown":
+                    fmt = detect_format(line)
+                    if fmt:
+                        self.format = fmt
 
                 if self.collector is None:
                     detected = detect_collector(line, self.format)
@@ -237,6 +500,24 @@ class GCLogAnalyzer:
         # Handle any pending GC at EOF
         if self._jdk8_pending_gc:
             self._finalize_jdk8_gc(self._jdk8_pending_gc, self._jdk8_gc_start_line, None)
+        if self._g1_parser.pending:
+            result = self._g1_parser._finalize(None)
+            if result:
+                self._apply_g1_event(result)
+        if self._pending_concurrent:
+            # Unfinished concurrent cycle at EOF — discard
+            self._pending_concurrent = None
+
+        # Associate JDK 9+ G1 detail phases with their gc_events
+        if self._jdk9_phases_by_gc_id:
+            for event in self.gc_events:
+                gc_id = event.get('gc_id')
+                if gc_id is not None and gc_id in self._jdk9_phases_by_gc_id:
+                    phases = self._jdk9_phases_by_gc_id[gc_id]
+                    event['phases'] = [
+                        {'name': p['name'], 'duration_ms': round(p['duration_ms'], 3)}
+                        for p in phases
+                    ]
 
         return self._build_summary()
 
@@ -267,6 +548,15 @@ class GCLogAnalyzer:
             if is_full:
                 self.full_gc_count += 1
 
+            # Extract GC cause for G1/Shenandoah (e.g., "G1 Evacuation Pause")
+            gc_cause = None
+            if self.collector in (None, "G1GC", "Shenandoah"):
+                cm = JDK9_CAUSE_PATTERN.search(line)
+                if cm:
+                    gc_cause = cm.group(1)
+                else:
+                    gc_cause = pause_type
+
             event = {
                 "line": line_num,
                 "gc_id": gc_id,
@@ -275,25 +565,12 @@ class GCLogAnalyzer:
                 "is_full_gc": is_full,
                 "raw": line[:200],
             }
+            if gc_cause:
+                event["gc_cause"] = gc_cause
             if ts:
                 event["timestamp"] = str(ts) if isinstance(ts, datetime) else ts
 
             self.gc_events.append(event)
-
-            if pause_ms > 200 and self.collector in ("G1GC", "Parallel", "Serial"):
-                self.anomalies.append({
-                    "line": line_num,
-                    "type": "long_pause",
-                    "pause_ms": pause_ms,
-                    "description": f"Long STW pause: {pause_ms:.1f}ms",
-                })
-            elif pause_ms > 10 and self.collector in ("ZGC", "Shenandoah"):
-                self.anomalies.append({
-                    "line": line_num,
-                    "type": "long_pause",
-                    "pause_ms": pause_ms,
-                    "description": f"Long STW pause for {self.collector}: {pause_ms:.1f}ms",
-                })
 
             if is_full:
                 self.anomalies.append({
@@ -320,19 +597,12 @@ class GCLogAnalyzer:
                 "pause_ms": pause_ms,
                 "is_full_gc": False,
                 "raw": line[:200],
+                "gc_cause": f"ZGC {gen}",
             }
             if ts:
                 event["timestamp"] = str(ts) if isinstance(ts, datetime) else ts
 
             self.gc_events.append(event)
-
-            if pause_ms > 10:
-                self.anomalies.append({
-                    "line": line_num,
-                    "type": "long_pause",
-                    "pause_ms": pause_ms,
-                    "description": f"Long ZGC STW pause ({gen} {pause_type}): {pause_ms:.1f}ms",
-                })
 
         # --- ZGC collection summary (total cycle time + heap change) ---
         m = ZGC_COLLECTION_PATTERN.search(line)
@@ -345,6 +615,8 @@ class GCLogAnalyzer:
             cycle_ms = cycle_sec * 1000
             self.zgc_cycle_times.append(cycle_ms)
 
+            heap_before_mb = self._parse_size_mb(heap_before)
+            heap_after_mb = self._parse_size_mb(heap_after)
             event = {
                 "line": line_num,
                 "gc_id": gc_id,
@@ -354,11 +626,40 @@ class GCLogAnalyzer:
                 "raw": line[:200],
                 "heap_before": heap_before,
                 "heap_after": heap_after,
+                "gc_cause": f"ZGC {coll_type}",
             }
+            if heap_before_mb is not None:
+                event["heap_before_mb"] = round(heap_before_mb, 1)
+            if heap_after_mb is not None:
+                event["heap_after_mb"] = round(heap_after_mb, 1)
             if ts:
                 event["timestamp"] = str(ts) if isinstance(ts, datetime) else ts
 
             self.gc_events.append(event)
+
+            # Feed to heap trend analyzer
+            heap_after_mb = self._parse_size_mb(heap_after)
+            if heap_after_mb is not None and ts:
+                ts_sec = self._timestamp_to_seconds(ts)
+                if ts_sec is not None:
+                    self.heap_trend.add_point(ts_sec, heap_after_mb, is_full_gc=False)
+
+        # --- ZGC concurrent phases ---
+        m = ZGC_CONCURRENT_PATTERN.search(line)
+        if m:
+            gc_id = int(m.group(1))
+            gen = m.group(2)
+            phase_name = m.group(3).strip()
+            duration_ms = float(m.group(4))
+            ts_sec = self._timestamp_to_seconds(ts)
+            if ts_sec is not None:
+                self.concurrent_cycles.append({
+                    'cycle_id': len(self.concurrent_cycles),
+                    'algorithm': 'ZGC',
+                    'start_timestamp': ts_sec - duration_ms / 1000,
+                    'end_timestamp': ts_sec,
+                    'phases': [{'name': f'concurrent_{phase_name.lower()}', 'duration_ms': duration_ms}],
+                })
 
         # --- ZGC MMU extraction ---
         if "MMU:" in line and self.collector == "ZGC":
@@ -377,6 +678,19 @@ class GCLogAnalyzer:
                     "pause_ms": max_stall,
                     "description": f"ZGC allocation stall detected (avg={avg_stall:.3f}ms, max={max_stall:.3f}ms)",
                 })
+
+        # --- JDK 9+ G1GC detail phases from [gc,phases] ---
+        if self.collector in (None, 'G1GC'):
+            m = JDK9_G1_PHASE_PATTERN.search(line)
+            if m:
+                gc_id = int(m.group(1))
+                phase_name = m.group(2).strip()
+                duration_ms = float(m.group(3))
+                self._jdk9_phases_by_gc_id[gc_id].append({
+                    'name': phase_name,
+                    'duration_ms': duration_ms,
+                })
+                self.g1_detail_phases[phase_name].append(duration_ms)
 
         # Match to-space exhausted (G1)
         if "To-space exhausted" in line:
@@ -409,33 +723,40 @@ class GCLogAnalyzer:
         if ts:
             self.last_timestamp = ts
 
-        # Check for G1GC pause start
-        m = JDK8_G1_PAUSE_START.match(line)
-        if m:
-            # Finalize any pending GC
-            if self._jdk8_pending_gc:
-                self._finalize_jdk8_gc(self._jdk8_pending_gc, self._jdk8_gc_start_line, None)
-
-            trigger = m.group(1)
-            gen = m.group(2)
-            self._jdk8_pending_gc = {
-                "trigger": trigger,
-                "gen": gen,
-                "line": line_num,
-                "timestamp": str(ts) if ts else None,
-                "heap_before_mb": None,
-                "heap_after_mb": None,
-                "eden_before_mb": None,
-                "eden_after_mb": None,
-                "survivor_before_mb": None,
-                "survivor_after_mb": None,
-                "metaspace_used_kb": None,
-                "is_full_gc": False,
+        # --- Concurrent cycle tracking (G1) ---
+        if 'concurrent-mark-start' in line:
+            self._pending_concurrent = {
+                'cycle_id': len(self.concurrent_cycles),
+                'algorithm': 'G1',
+                'start_timestamp': self._timestamp_to_seconds(ts),
+                'reset_for_overflow': False,
             }
-            self._jdk8_gc_start_line = line_num
-            return
+        elif 'concurrent-mark-end' in line and self._pending_concurrent:
+            self._pending_concurrent['end_timestamp'] = self._timestamp_to_seconds(ts)
+            self.concurrent_cycles.append(self._pending_concurrent)
+            self._pending_concurrent = None
+        elif 'concurrent-mark-reset-for-overflow' in line:
+            if self._pending_concurrent:
+                self._pending_concurrent['reset_for_overflow'] = True
+                self.anomalies.append({
+                    'line': line_num,
+                    'type': 'concurrent_mark_overflow',
+                    'description': 'G1 concurrent mark reset for overflow',
+                })
 
-        # Check for safepoint lines (independent of GC events)
+        # --- G1 state machine (when collector is unknown or G1) ---
+        if self.collector in (None, 'G1GC'):
+            result = self._g1_parser.feed_line(line, line_num, ts)
+            if result:
+                self.collector = 'G1GC'
+                self._apply_g1_event(result, ts)
+                return
+            if self._g1_parser.pending:
+                self.collector = 'G1GC'
+                return
+
+        # --- Non-G1 fallback: existing logic for Parallel/Serial/Unknown ---
+        # Check for safepoint lines
         m = JDK8_SAFEPOINT_LINE.search(line)
         if m:
             self._process_safepoint(ts, float(m.group(1)), float(m.group(2)), line_num)
@@ -458,7 +779,6 @@ class GCLogAnalyzer:
 
         # If we have a pending GC, look for its end markers
         if self._jdk8_pending_gc:
-            # Check for detailed [Times: user=X sys=Y, real=Z secs]
             m = JDK8_TIMES_DETAILED.search(line)
             if m:
                 self._jdk8_times_detailed = {
@@ -466,7 +786,6 @@ class GCLogAnalyzer:
                     "real": float(m.group(3)),
                 }
 
-            # Check for [Times: ... real=X secs]
             m = JDK8_TIMES_PATTERN.search(line)
             if m:
                 pause_sec = float(m.group(1))
@@ -475,8 +794,6 @@ class GCLogAnalyzer:
                 self._jdk8_pending_gc = None
                 return
 
-            # Check for simple trailing pause (Parallel GC style)
-            # Only match on actual GC summary lines, not reference processing lines
             m = JDK8_SIMPLE_PAUSE.search(line)
             if m and not self._jdk8_pending_gc.get("pause_sec"):
                 if "[GC" in line or "[Full GC" in line:
@@ -486,7 +803,6 @@ class GCLogAnalyzer:
                     self._jdk8_pending_gc = None
                     return
 
-            # Check for Eden/Survivors/Heap line
             m = JDK8_HEAP_LINE.search(line)
             if m:
                 self._jdk8_pending_gc["eden_before_mb"] = self._to_mb(float(m.group(1)), m.group(2))
@@ -494,16 +810,14 @@ class GCLogAnalyzer:
                 self._jdk8_pending_gc["survivor_before_mb"] = self._to_mb(float(m.group(5)), m.group(6))
                 self._jdk8_pending_gc["survivor_after_mb"] = self._to_mb(float(m.group(7)), m.group(8))
                 self._jdk8_pending_gc["heap_before_mb"] = self._to_mb(float(m.group(9)), m.group(10))
-                self._jdk8_pending_gc["heap_after_mb"] = self._to_mb(float(m.group(11)), m.group(12))
+                self._jdk8_pending_gc["heap_after_mb"] = self._to_mb(float(m.group(12)), m.group(13))
                 return
 
-            # Check for Metaspace line
             m = JDK8_METASPACE_LINE.search(line)
             if m:
                 self._jdk8_pending_gc["metaspace_used_kb"] = int(m.group(1))
                 return
 
-            # Check for G1GC detailed metrics
             m = JDK8_GC_WORKERS.search(line)
             if m:
                 self._jdk8_gc_workers = int(m.group(1))
@@ -548,6 +862,84 @@ class GCLogAnalyzer:
         multipliers = {"": 1/1024/1024, "B": 1/1024/1024, "K": 1/1024, "M": 1, "G": 1024, "T": 1024*1024}
         return val * multipliers.get(unit, 1)
 
+    def _parse_size_mb(self, size_str):
+        """Parse a size string like '7486M' or '2.5G' into MB."""
+        import re
+        m = re.match(r'([\d.]+)([KMGT]?)', size_str)
+        if m:
+            return self._to_mb(float(m.group(1)), m.group(2))
+        return None
+
+    def _timestamp_to_seconds(self, ts):
+        """Convert a timestamp to seconds since epoch."""
+        if isinstance(ts, datetime):
+            return ts.timestamp()
+        elif isinstance(ts, (int, float)):
+            return ts
+        elif isinstance(ts, str):
+            try:
+                dt = datetime.fromisoformat(ts)
+                return dt.timestamp()
+            except (ValueError, TypeError):
+                pass
+        return None
+
+    def _apply_g1_event(self, result, ts):
+        """Apply a completed G1 event from the state machine."""
+        event_data = result['event']
+        start_line = result['start_line']
+        raw_lines = self._g1_parser.raw_lines
+        phases = result.get('phases', [])
+
+        # Extract heap info from raw lines
+        for line in raw_lines:
+            m = JDK8_HEAP_LINE.search(line)
+            if m:
+                event_data['eden_before_mb'] = self._to_mb(float(m.group(1)), m.group(2))
+                event_data['eden_after_mb'] = self._to_mb(float(m.group(3)), m.group(4))
+                event_data['survivor_before_mb'] = self._to_mb(float(m.group(5)), m.group(6))
+                event_data['survivor_after_mb'] = self._to_mb(float(m.group(7)), m.group(8))
+                event_data['heap_before_mb'] = self._to_mb(float(m.group(9)), m.group(10))
+                event_data['heap_after_mb'] = self._to_mb(float(m.group(12)), m.group(13))
+                # Track max heap capacity for OOM estimation (from Heap: X(Y)->Z(W) )
+                capacity_mb = self._parse_size_mb(m.group(14))
+                if capacity_mb and capacity_mb > (self._max_heap_mb or 0):
+                    self._max_heap_mb = capacity_mb
+                break
+
+            m = JDK8_METASPACE_LINE.search(line)
+            if m:
+                event_data['metaspace_used_kb'] = int(m.group(1))
+
+        # Set detailed metrics for finalizer
+        if result.get('gc_workers'):
+            self._jdk8_gc_workers = result['gc_workers']
+        if result.get('object_copy'):
+            self._jdk8_object_copy = result['object_copy']
+        if result.get('worker_start'):
+            self._jdk8_worker_start = result['worker_start']
+        if result.get('times_detailed'):
+            self._jdk8_times_detailed = result['times_detailed']
+
+        # Collect G1 detail phases for summary
+        if phases:
+            event_data['phases'] = [{'name': p.name, 'duration_ms': round(p.duration_ms, 3)} for p in phases]
+            for phase in phases:
+                self.g1_detail_phases[phase.name].append(phase.duration_ms)
+
+        # Feed to heap trend analyzer (use event start timestamp, not end line ts)
+        if event_data.get('heap_after_mb') and event_data.get('timestamp'):
+            ts_sec = self._timestamp_to_seconds(event_data['timestamp'])
+            if ts_sec is not None:
+                self.heap_trend.add_point(
+                    ts_sec,
+                    event_data['heap_after_mb'],
+                    is_full_gc=event_data.get('is_full_gc', False),
+                )
+
+        # Call existing finalizer
+        self._finalize_jdk8_gc(event_data, start_line, None)
+
     def _finalize_jdk8_gc(self, gc_info, start_line, end_line):
         """Finalize a JDK8 GC event and add to statistics."""
         pause_sec = gc_info.get("pause_sec", 0)
@@ -580,6 +972,7 @@ class GCLogAnalyzer:
             "pause_ms": round(pause_ms, 2),
             "is_full_gc": is_full,
             "raw": f"{trigger} at line {start_line}",
+            "gc_cause": trigger,
         }
         if gc_info.get("timestamp"):
             event["timestamp"] = gc_info["timestamp"]
@@ -597,30 +990,12 @@ class GCLogAnalyzer:
 
         self.gc_events.append(event)
 
-        # Flag anomalies
-        if pause_ms > 200:
-            self.anomalies.append({
-                "line": start_line,
-                "type": "long_pause",
-                "pause_ms": pause_ms,
-                "description": f"Long STW pause: {pause_ms:.1f}ms",
-            })
-
         if is_full:
             self.anomalies.append({
                 "line": start_line,
                 "type": "full_gc",
                 "pause_ms": pause_ms,
                 "description": f"Full GC detected: {pause_ms:.1f}ms",
-            })
-
-        # Flag frequent Metadata GC Threshold events
-        if trigger == "Metadata GC Threshold":
-            self.anomalies.append({
-                "line": start_line,
-                "type": "metadata_gc_threshold",
-                "pause_ms": pause_ms,
-                "description": f"Metadata GC Threshold triggered GC: {pause_ms:.1f}ms",
             })
 
         # Calculate CPU utilization from detailed [Times] output
@@ -634,6 +1009,16 @@ class GCLogAnalyzer:
 
         # Save real time for next safepoint correlation
         self._last_gc_real_time_sec = pause_sec
+
+        # Feed to heap trend analyzer (non-G1 path)
+        if gc_info.get("heap_after_mb") and gc_info.get("timestamp"):
+            ts_sec = self._timestamp_to_seconds(gc_info["timestamp"])
+            if ts_sec is not None:
+                self.heap_trend.add_point(
+                    ts_sec,
+                    gc_info["heap_after_mb"],
+                    is_full_gc=is_full,
+                )
 
         # Add detailed metrics to event
         if cpu_utilization is not None:
@@ -677,15 +1062,6 @@ class GCLogAnalyzer:
         }
         self.safepoint_events.append(event)
 
-        # Flag non-GC safepoint pauses (> 100ms)
-        if non_gc_pause_sec > 0.1:
-            self.anomalies.append({
-                "line": line_num,
-                "type": "non_gc_safepoint",
-                "pause_ms": round(non_gc_pause_sec * 1000, 2),
-                "description": f"Non-GC safepoint pause: {non_gc_pause_sec*1000:.1f}ms (total stopped={total_stopped_sec*1000:.1f}ms, GC={gc_pause_sec*1000:.1f}ms)",
-            })
-
         self._last_gc_real_time_sec = None
 
     def _build_summary(self):
@@ -705,6 +1081,9 @@ class GCLogAnalyzer:
             p95 = sorted_pauses[p95_idx]
             # Only report p99 when sample size >= 100; otherwise use p95 with note
             p99 = sorted_pauses[int(n * 0.99)] if n >= 100 else None
+            # p99.5 requires >= 200 samples, p99.9 requires >= 500
+            p995 = sorted_pauses[int(n * 0.995)] if n >= 200 else None
+            p999 = sorted_pauses[int(n * 0.999)] if n >= 500 else None
 
             runtime_estimate_ms, runtime_is_estimated = self._estimate_runtime_ms()
             throughput = 100.0
@@ -717,11 +1096,11 @@ class GCLogAnalyzer:
             # Collector-specific metrics
             if self.collector == "ZGC":
                 summary["metrics"] = self._build_zgc_metrics(
-                    sorted_pauses, n, p50, p95, p99, throughput, runtime_estimate_ms
+                    sorted_pauses, n, p50, p95, p99, p995, p999, throughput, runtime_estimate_ms
                 )
             else:
                 summary["metrics"] = self._build_standard_metrics(
-                    sorted_pauses, n, p50, p95, p99, throughput, runtime_estimate_ms
+                    sorted_pauses, n, p50, p95, p99, p995, p999, throughput, runtime_estimate_ms
                 )
         else:
             summary["metrics"] = {"total_gc_events": 0}
@@ -734,8 +1113,6 @@ class GCLogAnalyzer:
         summary["anomalies"] = self.anomalies[:100]
         summary["anomaly_count"] = len(self.anomalies)
 
-        summary["health_assessment"] = self._assess_health(summary.get("metrics", {}))
-
         # Startup vs steady-state analysis
         startup_analysis = self._build_startup_analysis()
         if startup_analysis:
@@ -744,9 +1121,129 @@ class GCLogAnalyzer:
         # Recent events sample
         summary["recent_events_sample"] = self.gc_events[-10:] if len(self.gc_events) >= 10 else self.gc_events
 
+        # NEW: Concurrent cycles summary
+        if self.concurrent_cycles:
+            durations = []
+            for c in self.concurrent_cycles:
+                start = c.get('start_timestamp')
+                end = c.get('end_timestamp')
+                if start is not None and end is not None:
+                    durations.append((end - start) * 1000)
+            reset_count = sum(1 for c in self.concurrent_cycles if c.get('reset_for_overflow'))
+            summary["concurrent_cycles"] = {
+                "count": len(self.concurrent_cycles),
+                "algorithm": self.concurrent_cycles[0].get('algorithm', 'unknown'),
+                "avg_duration_ms": round(sum(durations) / len(durations), 2) if durations else None,
+                "max_duration_ms": round(max(durations), 2) if durations else None,
+                "reset_for_overflow_count": reset_count,
+            }
+
+        # NEW: Heap trend analysis
+        heap_trend_result = self.heap_trend.regression_analysis(max_heap_mb=self._max_heap_mb)
+        if heap_trend_result.get('samples', 0) > 0:
+            summary["heap_trend"] = heap_trend_result
+
+        # NEW: G1 detail phase stats (JDK 8)
+        if self.g1_detail_phases:
+            summary["g1_detail_phases"] = {
+                name: round(sum(values) / len(values), 3)
+                for name, values in self.g1_detail_phases.items()
+                if values
+            }
+
+        # NEW: G1 detail phase stats (JDK 9+)
+        if not summary.get("g1_detail_phases") and self._jdk9_phases_by_gc_id:
+            jdk9_phase_stats = defaultdict(list)
+            for event in self.gc_events:
+                for phase in event.get('phases', []):
+                    jdk9_phase_stats[phase['name']].append(phase['duration_ms'])
+            if jdk9_phase_stats:
+                summary["g1_detail_phases"] = {
+                    name: round(sum(values) / len(values), 3)
+                    for name, values in jdk9_phase_stats.items()
+                }
+
+        # P0-1: Pause-by-type statistics
+        pause_by_type = self._build_pause_by_type()
+        if pause_by_type:
+            summary["pause_by_type"] = pause_by_type
+
+        # P0-2: VM operations overhead
+        vm_ops = self._build_vm_operations()
+        if vm_ops:
+            summary["vm_operations"] = vm_ops
+
+        # P1-1: Memory efficiency
+        mem_eff = self._build_memory_efficiency()
+        if mem_eff:
+            summary["memory_efficiency"] = mem_eff
+
+        # P1-2: Promotion
+        promo = self._build_promotion()
+        if promo:
+            summary["promotion"] = promo
+
+        # P1-3: Pause intervals
+        intervals = self._build_pause_intervals()
+        if intervals:
+            summary["pause_intervals_ms"] = intervals
+
+        # P0: GC efficiency
+        gc_eff = self._build_gc_efficiency()
+        if gc_eff:
+            summary["gc_efficiency"] = gc_eff
+
+        # P0: GC causes
+        gc_causes = self._build_gc_causes()
+        if gc_causes:
+            summary["gc_causes"] = gc_causes
+
+        # P1: Full GC summary
+        full_gc_summary = self._build_full_gc_summary()
+        if full_gc_summary:
+            summary["full_gc_summary"] = full_gc_summary
+
+        # P2: Heap trigger stats
+        heap_trigger = self._build_heap_trigger_stats()
+        if heap_trigger:
+            summary["heap_trigger_stats"] = heap_trigger
+
+        # Level 3: Coordinate data for Phase 2 deep dive
+        top_pauses = self._build_top_pauses(n=20)
+        if top_pauses:
+            summary["top_pauses"] = top_pauses
+
+        full_gc_events = self._build_full_gc_events()
+        if full_gc_events:
+            summary["full_gc_events"] = full_gc_events
+
+        top_by_type = self._build_top_by_type(n=10)
+        if top_by_type:
+            summary["top_by_type"] = top_by_type
+
+        top_by_cause = self._build_top_by_cause(n=10)
+        if top_by_cause:
+            summary["top_by_cause"] = top_by_cause
+
+        gc_cadence = self._build_gc_cadence(window_seconds=60)
+        if gc_cadence:
+            summary["gc_cadence"] = gc_cadence
+
+        heap_samples = self._build_heap_samples(max_points=20)
+        if heap_samples:
+            summary["heap_samples"] = heap_samples
+
+        safepoint_events = self._build_safepoint_events(n=20)
+        if safepoint_events:
+            summary["safepoint_events"] = safepoint_events
+
+        promotion_spikes = self._build_promotion_spikes(n=10)
+        if promotion_spikes:
+            summary["promotion_spikes"] = promotion_spikes
+
         return summary
 
-    def _build_zgc_metrics(self, sorted_pauses, n, p50, p95, p99, throughput, runtime_estimate_ms):
+    def _build_zgc_metrics(self, sorted_pauses, n, p50, p95, p99, p995, p999, throughput, runtime_estimate_ms):
         """Build metrics specific to ZGC."""
         metrics = {
             "stw_pause_count": n,
@@ -763,6 +1260,14 @@ class GCLogAnalyzer:
             metrics["stw_p99_ms"] = round(p99, 3)
         else:
             metrics["stw_p99_note"] = "Sample size < 100; use p95 instead"
+        if p995 is not None:
+            metrics["stw_p995_ms"] = round(p995, 3)
+        else:
+            metrics["stw_p995_note"] = "Sample size < 200; use p99 instead"
+        if p999 is not None:
+            metrics["stw_p999_ms"] = round(p999, 3)
+        else:
+            metrics["stw_p999_note"] = "Sample size < 500; use p995 instead"
 
         # MMU stats
         if self.mmu_stats:
@@ -779,6 +1284,10 @@ class GCLogAnalyzer:
             metrics["cycle_p95_ms"] = round(sorted_cycles[int(cycle_n * 0.95)] if cycle_n >= 20 else sorted_cycles[-1], 2)
             if cycle_n >= 100:
                 metrics["cycle_p99_ms"] = round(sorted_cycles[int(cycle_n * 0.99)], 2)
+            if cycle_n >= 200:
+                metrics["cycle_p995_ms"] = round(sorted_cycles[int(cycle_n * 0.995)], 2)
+            if cycle_n >= 500:
+                metrics["cycle_p999_ms"] = round(sorted_cycles[int(cycle_n * 0.999)], 2)
 
         if runtime_estimate_ms > 0:
             freq_per_min = len(self.zgc_cycle_times) / (runtime_estimate_ms / 1000 / 60) if self.zgc_cycle_times else 0
@@ -786,7 +1295,7 @@ class GCLogAnalyzer:
 
         return metrics
 
-    def _build_standard_metrics(self, sorted_pauses, n, p50, p95, p99, throughput, runtime_estimate_ms):
+    def _build_standard_metrics(self, sorted_pauses, n, p50, p95, p99, p995, p999, throughput, runtime_estimate_ms):
         """Build standard metrics for G1GC, Parallel, Serial, Shenandoah."""
         metrics = {
             "total_gc_events": n,
@@ -803,6 +1312,14 @@ class GCLogAnalyzer:
             metrics["p99_pause_ms"] = round(p99, 2)
         else:
             metrics["p99_note"] = "Sample size < 100; use p95 instead"
+        if p995 is not None:
+            metrics["p995_pause_ms"] = round(p995, 2)
+        else:
+            metrics["p995_note"] = "Sample size < 200; use p99 instead"
+        if p999 is not None:
+            metrics["p999_pause_ms"] = round(p999, 2)
+        else:
+            metrics["p999_note"] = "Sample size < 500; use p995 instead"
 
         if runtime_estimate_ms > 0:
             freq_per_min = n / (runtime_estimate_ms / 1000 / 60)
@@ -824,47 +1341,6 @@ class GCLogAnalyzer:
             return (self.last_timestamp - self.first_timestamp) * 1000, False
         estimated = max(self.total_pause_ms * 20, 60000)
         return estimated, True
-
-    def _assess_health(self, metrics):
-        """Assess overall GC health, with collector-specific rules."""
-        issues = []
-
-        if self.collector == "ZGC":
-            # ZGC health checks
-            if metrics.get("stw_max_ms", 0) > 10:
-                issues.append(f"ZGC STW pause too long: {metrics['stw_max_ms']}ms (target <1ms)")
-            if metrics.get("allocation_stall_count", 0) > 0:
-                issues.append(f"Allocation stall detected: {metrics['allocation_stall_count']} events")
-            if metrics.get("cycle_max_ms", 0) > 2000:
-                issues.append(f"GC cycle time too long: {metrics['cycle_max_ms']}ms")
-            # MMU check
-            mmu_5ms = metrics.get("mmu", {}).get(5, 100)
-            if mmu_5ms < 95:
-                issues.append(f"Low MMU (5ms): {mmu_5ms}%")
-        else:
-            # Standard collectors (G1GC, Parallel, Serial, Shenandoah)
-            if metrics.get("throughput_percent", 100) < 95:
-                issues.append("Low throughput")
-            if metrics.get("throughput_percent", 100) < 90:
-                issues.append("Very low throughput")
-            if metrics.get("max_pause_ms", 0) > 200:
-                issues.append("Long maximum pause")
-            if metrics.get("full_gc_count", 0) > 0:
-                issues.append("Full GCs detected")
-            if metrics.get("gc_frequency_per_minute", 0) > 20:
-                issues.append("High GC frequency")
-
-        # Check for metadata GC threshold anomalies
-        metadata_count = sum(1 for a in self.anomalies if a["type"] == "metadata_gc_threshold")
-        if metadata_count > 3:
-            issues.append(f"Frequent Metadata GC Threshold events ({metadata_count})")
-
-        if not issues:
-            return {"status": "healthy", "issues": []}
-        elif len(issues) <= 2:
-            return {"status": "warning", "issues": issues}
-        else:
-            return {"status": "critical", "issues": issues}
 
     def _build_startup_analysis(self):
         """Analyze startup period vs steady state for G1GC JDK8 logs."""
@@ -978,14 +1454,507 @@ class GCLogAnalyzer:
 
         # Non-GC safepoint summary
         if self.safepoint_events:
-            long_safepoints = [s for s in self.safepoint_events if s.get("non_gc_pause_sec", 0) > 0.1]
+            non_gc_pauses = [s["non_gc_pause_sec"] * 1000 for s in self.safepoint_events if s.get("non_gc_pause_sec", 0) > 0]
             analysis["safepoint_summary"] = {
                 "total_safepoints": len(self.safepoint_events),
-                "long_non_gc_safepoints": len(long_safepoints),
-                "max_non_gc_pause_ms": round(max(s["non_gc_pause_sec"] for s in long_safepoints) * 1000, 2) if long_safepoints else 0,
+                "non_gc_count": len(non_gc_pauses),
+                "max_non_gc_pause_ms": round(max(non_gc_pauses), 2) if non_gc_pauses else 0,
             }
 
         return analysis
+
+    def _build_pause_by_type(self):
+        """Group GC events by type and compute per-type pause statistics."""
+        from collections import defaultdict
+        groups = defaultdict(list)
+        for e in self.gc_events:
+            pause = e.get("pause_ms", 0)
+            if pause <= 0:
+                continue
+            type_name = e.get("type", "Unknown")
+            # Exclude ZGC collection total events (cycle duration, not STW pause)
+            if type_name.startswith("ZGC") and "Collection (total)" in type_name:
+                continue
+            groups[type_name].append(pause)
+        if not groups:
+            return None
+        result = {}
+        for type_name, pauses in sorted(groups.items(), key=lambda x: -sum(x[1])):
+            n = len(pauses)
+            sorted_p = sorted(pauses)
+            entry = {
+                "count": n,
+                "min_ms": round(min(pauses), 2),
+                "max_ms": round(max(pauses), 2),
+                "avg_ms": round(sum(pauses) / n, 2),
+                "median_ms": round(sorted_p[n // 2], 2),
+                "p95_ms": round(sorted_p[int(n * 0.95)] if n >= 20 else sorted_p[-1], 2),
+                "sum_ms": round(sum(pauses), 2),
+                "sum_percent": round(sum(pauses) / self.total_pause_ms * 100, 1) if self.total_pause_ms > 0 else 0,
+            }
+            if n >= 200:
+                entry["p995_ms"] = round(sorted_p[int(n * 0.995)], 2)
+            if n >= 500:
+                entry["p999_ms"] = round(sorted_p[int(n * 0.999)], 2)
+            result[type_name] = entry
+        return result
+
+    def _build_vm_operations(self):
+        """Aggregate non-GC safepoint pauses from safepoint events."""
+        vm_events = [s for s in self.safepoint_events if s.get("non_gc_pause_sec", 0) > 0]
+        if not vm_events:
+            return None
+        pauses_ms = [s["non_gc_pause_sec"] * 1000 for s in vm_events]
+        n = len(pauses_ms)
+        sorted_p = sorted(pauses_ms)
+        return {
+            "count": n,
+            "total_ms": round(sum(pauses_ms), 2),
+            "avg_ms": round(sum(pauses_ms) / n, 2),
+            "min_ms": round(min(pauses_ms), 2),
+            "max_ms": round(max(pauses_ms), 2),
+            "median_ms": round(sorted_p[n // 2], 2),
+            "p95_ms": round(sorted_p[int(n * 0.95)] if n >= 20 else sorted_p[-1], 2),
+        }
+
+    def _build_memory_efficiency(self):
+        """Compute total and average memory freed per GC event."""
+        gc_freed = []
+        full_gc_freed = []
+        for e in self.gc_events:
+            before = e.get("heap_before_mb")
+            after = e.get("heap_after_mb")
+            if before is not None and after is not None:
+                freed = before - after
+                if freed > 0:
+                    gc_freed.append(freed)
+                    if e.get("is_full_gc"):
+                        full_gc_freed.append(freed)
+        if not gc_freed:
+            return None
+        result = {
+            "total_freed_mb": round(sum(gc_freed), 1),
+            "avg_freed_per_gc_mb": round(sum(gc_freed) / len(gc_freed), 1),
+        }
+        if full_gc_freed:
+            result["total_freed_by_full_gc_mb"] = round(sum(full_gc_freed), 1)
+            result["avg_freed_per_full_gc_mb"] = round(sum(full_gc_freed) / len(full_gc_freed), 1)
+        return result
+
+    def _build_promotion(self):
+        """Approximate object promotion to tenured from heap/eden/survivor deltas."""
+        promotions = []
+        for e in self.gc_events:
+            if not all(k in e for k in (
+                "heap_before_mb", "heap_after_mb",
+                "eden_before_mb", "eden_after_mb",
+                "survivor_before_mb", "survivor_after_mb"
+            )):
+                continue
+            tenured_before = (
+                e["heap_before_mb"] - e["eden_before_mb"] - e["survivor_before_mb"]
+            )
+            tenured_after = (
+                e["heap_after_mb"] - e["eden_after_mb"] - e["survivor_after_mb"]
+            )
+            promoted = tenured_after - tenured_before
+            if promoted > 0:
+                promotions.append(promoted)
+        if not promotions:
+            return None
+        return {
+            "total_promoted_mb": round(sum(promotions), 1),
+            "avg_promoted_per_gc_mb": round(sum(promotions) / len(promotions), 1),
+            "max_promoted_mb": round(max(promotions), 1),
+        }
+
+    def _build_pause_intervals(self):
+        """Compute statistics for intervals between consecutive STW events."""
+        stw_events = []
+        for e in self.gc_events:
+            pause = e.get("pause_ms", 0)
+            if pause > 0 and "timestamp" in e:
+                # Skip ZGC collection total events (full cycle, not individual STW)
+                if e.get("type", "").startswith("ZGC") and "Collection (total)" in e.get("type", ""):
+                    continue
+                ts = self._timestamp_to_seconds(e["timestamp"])
+                if ts is not None:
+                    stw_events.append((ts, e))
+        if len(stw_events) < 2:
+            return None
+        stw_events.sort(key=lambda x: x[0])
+        intervals = []
+        for i in range(1, len(stw_events)):
+            interval_ms = (stw_events[i][0] - stw_events[i - 1][0]) * 1000
+            if interval_ms > 0:
+                intervals.append(interval_ms)
+        if not intervals:
+            return None
+        n = len(intervals)
+        sorted_i = sorted(intervals)
+        return {
+            "avg": round(sum(intervals) / n, 2),
+            "min": round(min(intervals), 2),
+            "max": round(max(intervals), 2),
+            "median": round(sorted_i[n // 2], 2),
+            "p95": round(sorted_i[int(n * 0.95)] if n >= 20 else sorted_i[-1], 2),
+        }
+
+    def _build_gc_efficiency(self):
+        """Compute GC efficiency metrics: freed memory per minute and per ms pause."""
+        total_freed = 0.0
+        full_gc_freed = 0.0
+        full_gc_pause_ms = 0.0
+
+        for e in self.gc_events:
+            before = e.get("heap_before_mb")
+            after = e.get("heap_after_mb")
+            if before is not None and after is not None:
+                freed = before - after
+                if freed > 0:
+                    total_freed += freed
+                    if e.get("is_full_gc"):
+                        full_gc_freed += freed
+
+        for e in self.gc_events:
+            if e.get("is_full_gc") and e.get("pause_ms", 0) > 0:
+                full_gc_pause_ms += e["pause_ms"]
+
+        if total_freed <= 0 or self.total_pause_ms <= 0:
+            return None
+
+        runtime_estimate_ms, _ = self._estimate_runtime_ms()
+        if runtime_estimate_ms <= 0:
+            return None
+
+        result = {
+            "freed_mem_per_minute": round(total_freed / (runtime_estimate_ms / 60000), 2),
+            "avg_performance_mbps": round(total_freed / self.total_pause_ms, 3),
+        }
+
+        if full_gc_freed > 0 and full_gc_pause_ms > 0:
+            result["full_gc_performance_mbps"] = round(full_gc_freed / full_gc_pause_ms, 3)
+
+        regular_freed = total_freed - full_gc_freed
+        regular_pause = self.total_pause_ms - full_gc_pause_ms
+        if regular_freed > 0 and regular_pause > 0:
+            result["regular_gc_performance_mbps"] = round(regular_freed / regular_pause, 3)
+
+        return result
+
+    def _build_gc_causes(self):
+        """Group GC events by trigger cause and compute per-cause statistics."""
+        groups = defaultdict(list)
+        for e in self.gc_events:
+            pause = e.get("pause_ms", 0)
+            if pause <= 0:
+                continue
+            type_name = e.get("type", "")
+            # Exclude ZGC collection total events
+            if type_name.startswith("ZGC") and "Collection (total)" in type_name:
+                continue
+            cause = e.get("gc_cause")
+            if not cause:
+                # Derive from type: extract content in parentheses
+                if "(" in type_name:
+                    cause = type_name.split("(", 1)[1].split(")", 1)[0]
+                else:
+                    cause = type_name
+            if not cause:
+                cause = "Unknown"
+            groups[cause].append(pause)
+
+        if not groups:
+            return None
+
+        result = {}
+        for cause, pauses in sorted(groups.items(), key=lambda x: -sum(x[1])):
+            n = len(pauses)
+            result[cause] = {
+                "count": n,
+                "total_pause_ms": round(sum(pauses), 2),
+                "avg_pause_ms": round(sum(pauses) / n, 2),
+                "max_pause_ms": round(max(pauses), 2),
+            }
+        return result
+
+    def _build_full_gc_summary(self):
+        """Aggregate statistics for Full GC events only."""
+        full_gc_events = [e for e in self.gc_events if e.get("is_full_gc") and e.get("pause_ms", 0) > 0]
+        if not full_gc_events:
+            return None
+
+        pauses = [e["pause_ms"] for e in full_gc_events]
+        result = {
+            "count": len(pauses),
+            "total_pause_ms": round(sum(pauses), 2),
+            "avg_pause_ms": round(sum(pauses) / len(pauses), 2),
+            "max_pause_ms": round(max(pauses), 2),
+            "min_pause_ms": round(min(pauses), 2),
+        }
+
+        full_gc_freed = []
+        for e in full_gc_events:
+            before = e.get("heap_before_mb")
+            after = e.get("heap_after_mb")
+            if before is not None and after is not None:
+                freed = before - after
+                if freed > 0:
+                    full_gc_freed.append(freed)
+
+        if full_gc_freed:
+            result["total_freed_mb"] = round(sum(full_gc_freed), 1)
+            result["avg_freed_mb"] = round(sum(full_gc_freed) / len(full_gc_freed), 1)
+
+        return result
+
+    def _build_heap_trigger_stats(self):
+        """Approximate heap usage ratio at GC trigger time."""
+        usage_percents = []
+        max_heap = self._max_heap_mb
+
+        # Fallback: estimate max heap from max observed heap value (before or after) * 1.1
+        if max_heap is None:
+            heap_values = []
+            for e in self.gc_events:
+                if e.get("heap_before_mb") is not None:
+                    heap_values.append(e["heap_before_mb"])
+                if e.get("heap_after_mb") is not None:
+                    heap_values.append(e["heap_after_mb"])
+            if heap_values:
+                max_heap = max(heap_values) * 1.1
+
+        if max_heap is None or max_heap <= 0:
+            return None
+
+        for e in self.gc_events:
+            before = e.get("heap_before_mb")
+            if before is not None:
+                usage_percents.append(before / max_heap * 100)
+
+        if len(usage_percents) < 5:
+            return None
+
+        return {
+            "avg_usage_percent": round(sum(usage_percents) / len(usage_percents), 1),
+            "max_usage_percent": round(max(usage_percents), 1),
+            "min_usage_percent": round(min(usage_percents), 1),
+            "high_usage_count": sum(1 for u in usage_percents if u > 80),
+            "approximate_max_heap_mb": round(max_heap, 1),
+            "note": "Approximate: max heap inferred from GC events. Accurate IOF requires -XX:+PrintAdaptiveSizePolicy.",
+        }
+
+    def _event_to_coordinate(self, event):
+        """Extract coordinate fields from a gc_event for Level 3 output."""
+        result = {
+            "line_number": event.get("line"),
+            "pause_ms": event.get("pause_ms"),
+            "gc_type": event.get("type"),
+        }
+        ts = event.get("timestamp")
+        if ts is not None:
+            result["timestamp"] = str(ts) if isinstance(ts, datetime) else ts
+        if event.get("gc_cause"):
+            result["gc_cause"] = event["gc_cause"]
+        if event.get("is_full_gc") is not None:
+            result["is_full_gc"] = event["is_full_gc"]
+        if event.get("heap_before_mb") is not None:
+            result["heap_before_mb"] = event["heap_before_mb"]
+        if event.get("heap_after_mb") is not None:
+            result["heap_after_mb"] = event["heap_after_mb"]
+        return result
+
+    def _build_top_pauses(self, n=20):
+        """Top N STW pauses by pause_ms, descending."""
+        candidates = []
+        for e in self.gc_events:
+            pause = e.get("pause_ms", 0)
+            if pause <= 0:
+                continue
+            # Skip ZGC collection total events (full cycle, not individual STW)
+            type_name = e.get("type", "")
+            if type_name.startswith("ZGC") and "Collection (total)" in type_name:
+                continue
+            candidates.append(e)
+        if not candidates:
+            return None
+        sorted_events = sorted(candidates, key=lambda e: e.get("pause_ms", 0), reverse=True)
+        result = []
+        for rank, event in enumerate(sorted_events[:n], start=1):
+            coord = self._event_to_coordinate(event)
+            coord["rank"] = rank
+            result.append(coord)
+        return result
+
+    def _build_full_gc_events(self):
+        """All Full GC events with coordinates."""
+        full_events = [e for e in self.gc_events if e.get("is_full_gc") and e.get("pause_ms", 0) > 0]
+        if not full_events:
+            return None
+        return [self._event_to_coordinate(e) for e in full_events]
+
+    def _build_top_by_type(self, n=10):
+        """Top N events per GC type, grouped by type."""
+        from collections import defaultdict
+        groups = defaultdict(list)
+        for e in self.gc_events:
+            pause = e.get("pause_ms", 0)
+            if pause <= 0:
+                continue
+            type_name = e.get("type", "Unknown")
+            # Skip ZGC collection total events
+            if type_name.startswith("ZGC") and "Collection (total)" in type_name:
+                continue
+            groups[type_name].append(e)
+        if not groups:
+            return None
+        result = {}
+        for type_name, events in sorted(groups.items()):
+            sorted_events = sorted(events, key=lambda e: e.get("pause_ms", 0), reverse=True)
+            result[type_name] = [self._event_to_coordinate(e) for e in sorted_events[:n]]
+        return result
+
+    def _build_top_by_cause(self, n=10):
+        """Top N events per GC cause, grouped by cause."""
+        from collections import defaultdict
+        groups = defaultdict(list)
+        for e in self.gc_events:
+            pause = e.get("pause_ms", 0)
+            if pause <= 0:
+                continue
+            type_name = e.get("type", "")
+            if type_name.startswith("ZGC") and "Collection (total)" in type_name:
+                continue
+            cause = e.get("gc_cause")
+            if not cause:
+                if "(" in type_name:
+                    cause = type_name.split("(", 1)[1].split(")", 1)[0]
+                else:
+                    cause = type_name or "Unknown"
+            groups[cause].append(e)
+        if not groups:
+            return None
+        result = {}
+        for cause, events in sorted(groups.items()):
+            sorted_events = sorted(events, key=lambda e: e.get("pause_ms", 0), reverse=True)
+            result[cause] = [self._event_to_coordinate(e) for e in sorted_events[:n]]
+        return result
+
+    def _build_gc_cadence(self, window_seconds=60):
+        """GC count and total pause per time window."""
+        events_with_ts = []
+        for e in self.gc_events:
+            pause = e.get("pause_ms", 0)
+            if pause <= 0:
+                continue
+            type_name = e.get("type", "")
+            if type_name.startswith("ZGC") and "Collection (total)" in type_name:
+                continue
+            ts = e.get("timestamp")
+            if ts is None:
+                continue
+            ts_sec = self._timestamp_to_seconds(ts)
+            if ts_sec is not None:
+                events_with_ts.append((ts_sec, pause))
+        if len(events_with_ts) < 2:
+            return None
+        events_with_ts.sort(key=lambda x: x[0])
+        first_ts = events_with_ts[0][0]
+        windows = defaultdict(lambda: {"gc_count": 0, "total_pause_ms": 0.0})
+        for ts_sec, pause in events_with_ts:
+            bucket = int((ts_sec - first_ts) // window_seconds)
+            window_start = first_ts + bucket * window_seconds
+            windows[window_start]["gc_count"] += 1
+            windows[window_start]["total_pause_ms"] += pause
+        if not windows:
+            return None
+        sorted_windows = []
+        for start_ts in sorted(windows.keys()):
+            w = windows[start_ts]
+            # Format start_time: use ISO if first_timestamp is datetime, else uptime seconds
+            if isinstance(self.first_timestamp, datetime):
+                start_dt = datetime.fromtimestamp(start_ts)
+                start_str = start_dt.isoformat()
+            else:
+                start_str = round(start_ts, 3)
+            sorted_windows.append({
+                "start_time": start_str,
+                "gc_count": w["gc_count"],
+                "total_pause_ms": round(w["total_pause_ms"], 2),
+            })
+        return {
+            "window_seconds": window_seconds,
+            "windows": sorted_windows,
+        }
+
+    def _build_heap_samples(self, max_points=20):
+        """Uniformly sampled heap_after_mb points over time."""
+        candidates = []
+        for idx, e in enumerate(self.gc_events):
+            if e.get("heap_after_mb") is None:
+                continue
+            ts = e.get("timestamp")
+            if ts is None:
+                continue
+            candidates.append({
+                "timestamp": str(ts) if isinstance(ts, datetime) else ts,
+                "heap_after_mb": e["heap_after_mb"],
+                "gc_event_index": idx,
+            })
+        if not candidates:
+            return None
+        if len(candidates) <= max_points:
+            return candidates
+        step = len(candidates) // max_points
+        return candidates[::step][:max_points]
+
+    def _build_safepoint_events(self, n=20):
+        """Top N non-GC safepoint events by non-GC pause time."""
+        candidates = []
+        for s in self.safepoint_events:
+            non_gc_sec = s.get("non_gc_pause_sec", 0)
+            if non_gc_sec <= 0:
+                continue
+            event = {
+                "line_number": s.get("line"),
+                "total_stopped_ms": round(s.get("total_stopped_sec", 0) * 1000, 2),
+                "stopping_ms": round(s.get("stopping_sec", 0) * 1000, 2),
+                "non_gc_pause_ms": round(non_gc_sec * 1000, 2),
+            }
+            ts = s.get("timestamp")
+            if ts is not None:
+                event["timestamp"] = ts
+            candidates.append((non_gc_sec, event))
+        if not candidates:
+            return None
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        return [event for _, event in candidates[:n]]
+
+    def _build_promotion_spikes(self, n=10):
+        """Top N events by promoted MB to tenured generation."""
+        candidates = []
+        for e in self.gc_events:
+            if not all(k in e for k in (
+                "heap_before_mb", "heap_after_mb",
+                "eden_before_mb", "eden_after_mb",
+                "survivor_before_mb", "survivor_after_mb"
+            )):
+                continue
+            tenured_before = e["heap_before_mb"] - e["eden_before_mb"] - e["survivor_before_mb"]
+            tenured_after = e["heap_after_mb"] - e["eden_after_mb"] - e["survivor_after_mb"]
+            promoted = tenured_after - tenured_before
+            if promoted > 0:
+                coord = self._event_to_coordinate(e)
+                coord["promoted_mb"] = round(promoted, 2)
+                candidates.append((promoted, coord))
+        if not candidates:
+            return None
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        result = []
+        for rank, (_, coord) in enumerate(candidates[:n], start=1):
+            coord["rank"] = rank
+            result.append(coord)
+        return result
 
     def extract_window_by_line(self, start_line, end_line):
         """Extract log lines within a line number range."""
