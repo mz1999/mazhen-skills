@@ -353,6 +353,7 @@ ALWAYS output the final analysis using this structure:
 |------|-----|------|
 | 吞吐量 | X% | {OK/警告/严重} |
 | 最大 STW 停顿 | Xms | {OK/警告/严重} |
+| **平均 STW 停顿** | Xms | {OK/警告/严重} |
 | **中位数停顿** | Xms | {OK/警告/严重} |
 | **P95 停顿** | Xms | {OK/警告/严重} |
 | P99 停顿 | Xms | {OK/警告/严重} |
