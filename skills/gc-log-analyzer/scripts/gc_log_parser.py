@@ -104,7 +104,7 @@ JDK9_PAUSE_PATTERN = re.compile(
 )
 # ZGC style: GC(0) Y: Pause Mark Start (Major) 0.099ms
 ZGC_PAUSE_PATTERN = re.compile(
-    r"GC\((\d+)\)\s+([YOy]):\s+Pause\s+([\w\s]+?)\s*(?:\([^)]*\))?\s+([\d.]+)\s*ms"
+    r"GC\((\d+)\)\s+([YOyo]):\s+Pause\s+([\w\s]+?)\s*(?:\([^)]*\))?\s+([\d.]+)\s*ms"
 )
 # ZGC collection summary: GC(11) Major Collection (Proactive) 7486M(91%)->714M(9%) 0.755s
 ZGC_COLLECTION_PATTERN = re.compile(
@@ -584,7 +584,7 @@ class GCLogAnalyzer:
         m = ZGC_PAUSE_PATTERN.search(line)
         if m:
             gc_id = int(m.group(1))
-            gen = m.group(2)
+            gen = m.group(2).upper()
             pause_type = m.group(3).strip()
             pause_ms = float(m.group(4))
             self.pause_times.append(pause_ms)
@@ -911,6 +911,9 @@ class GCLogAnalyzer:
         raw_lines = self._g1_parser.raw_lines
         phases = result.get('phases', [])
 
+        # Preserve raw log lines for downstream use (e.g. raw field)
+        event_data['raw_lines'] = raw_lines[:]
+
         # Extract heap info from raw lines
         for line in raw_lines:
             m = JDK8_HEAP_LINE.search(line)
@@ -986,12 +989,19 @@ class GCLogAnalyzer:
         else:
             pause_type = f"{gen} GC ({trigger})"
 
+        # Build raw field from original log lines when available
+        raw_lines = gc_info.get("raw_lines")
+        if raw_lines:
+            raw_text = "\n".join(raw_lines)[:200]
+        else:
+            raw_text = f"{trigger} at line {start_line}"
+
         event = {
             "line": start_line,
             "type": pause_type,
             "pause_ms": round(pause_ms, 2),
             "is_full_gc": is_full,
-            "raw": f"{trigger} at line {start_line}",
+            "raw": raw_text,
             "gc_cause": trigger,
         }
         if gc_info.get("timestamp"):
@@ -1142,7 +1152,24 @@ class GCLogAnalyzer:
         summary["recent_events_sample"] = self.gc_events[-10:] if len(self.gc_events) >= 10 else self.gc_events
 
         # NEW: Concurrent cycles summary
-        if self.concurrent_cycles:
+        # For ZGC, use full collection cycle times (from ZGC_COLLECTION_PATTERN)
+        # instead of individual concurrent phases tracked in self.concurrent_cycles.
+        if self.collector == "ZGC" and self.zgc_cycle_times:
+            durations = sorted(self.zgc_cycle_times)
+            cycle_n = len(durations)
+            cc = {
+                "count": cycle_n,
+                "algorithm": "ZGC",
+                "avg_duration_ms": round(sum(durations) / cycle_n, 2),
+                "max_duration_ms": round(max(durations), 2),
+                "min_duration_ms": round(min(durations), 2),
+            }
+            if cycle_n >= 20:
+                cc["p95_duration_ms"] = round(durations[int(cycle_n * 0.95)], 2)
+            if cycle_n >= 100:
+                cc["p99_duration_ms"] = round(durations[int(cycle_n * 0.99)], 2)
+            summary["concurrent_cycles"] = cc
+        elif self.concurrent_cycles:
             durations = []
             for c in self.concurrent_cycles:
                 start = c.get('start_timestamp')
