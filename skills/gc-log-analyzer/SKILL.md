@@ -270,43 +270,20 @@ For each anomaly, build a **reasoning chain** that walks from the observed pheno
 
 ## Report Structure
 
-Use this as a **framework**, not a rigid template. Skip sections that have no meaningful content. The goal is to communicate findings efficiently — a healthy log should take 100-200 words, not 2000.
+Every GC analysis produces **both** a markdown report and a self-contained HTML report. The markdown report is the primary analytical artifact; the HTML report is a visual, shareable companion with the same analytical depth plus inline SVG charts.
 
-### Healthy Log Fast Path
+### Delivery Checklist
 
-If `anomalies` is empty **and** core metrics are healthy (throughput > 99%, no Full GC, max pause within collector-typical range, stable heap), use this concise format:
+Before finishing any GC analysis, confirm both deliverables are complete:
 
-```markdown
-# GC 诊断报告：{一句话结论}
+- [ ] **Markdown report** — full analysis with all required sections (§2-5 below)
+- [ ] **Self-contained HTML report** — inline all CSS and SVG charts, zero external dependencies
 
-## 1. 执行摘要
-- **GC 算法**：{类型}（JDK {版本推断}）
-- **日志覆盖**：{时长}，共 {事件数} 个 GC 事件
-- **整体健康度**：{优秀/良好}
-- **关键健康观察**：
-  - {如"老年代无压力，100% Young GC，无 Mixed/Full GC"}
-  - {如"堆稳态稳定在 XGB/YGB，无泄漏迹象"}
-- **负载特征**：{持续高压/偶尔峰值/空闲低负载/周期性波动}（置信度：{高/中/低}）
+> Both deliverables are required regardless of whether the log appears healthy. Do not skip the HTML report for "simple" or "healthy" cases.
 
-## 2. 关键指标
+### Markdown Report
 
-| 指标 | 值 | 评估 |
-|------|-----|------|
-| 吞吐量 | X% | OK |
-| 最大 STW 停顿 | Xms | {OK / 注意（启动期）} |
-| 平均 STW 停顿 | Xms | OK |
-| GC 频率 | X 次/分钟 | OK |
-| Full GC 次数 | X | OK |
-
-> **整体评估**：{一句话总结，如"老年代无压力，堆稳定，GC 效率极高，系统处于健康状态。唯一关注点是启动期 470ms 峰值。"}
-
-## 3. 结论与建议
-{1-2 句话，如"GC 健康，无需调优。唯一注意点是启动期 470ms 峰值（已自恢复）。"}
-```
-
-### Full Analysis (when anomalies or concerning trends exist)
-
-For logs with real problems, expand from the fast path. Add sections as needed:
+Use this as a **framework**, not a rigid template. Skip sections that have no meaningful content. The goal is to communicate findings efficiently — a healthy log should still include all sections, but each can be brief.
 
 ```markdown
 # GC 诊断报告：{一句话结论}
@@ -407,6 +384,63 @@ For logs with real problems, expand from the fast path. Add sections as needed:
 - {关键字段保留，次要字段可简写}
 ```
 
+### HTML Report
+
+After completing the markdown analysis, generate a single-file HTML report.
+
+**1. Get chart assets**
+
+```bash
+python3 -c "
+import json, sys
+sys.path.insert(0, 'scripts')
+import html_report
+summary = json.load(open('summary.json'))
+assets = html_report.generate_chart_assets(summary)
+print(json.dumps(assets))
+"
+```
+
+Assets returned:
+
+| Key | Content | Data Source |
+|-----|---------|-------------|
+| `heap_trend_svg` | Area + line chart SVG | `heap_samples` |
+| `gc_cadence_svg` | Bar + dashed line dual-axis SVG | `gc_cadence.windows` |
+| `pause_scatter_svg` | Scatter plot, log Y-axis SVG | `top_pauses` |
+| `pause_by_type_svg` | Horizontal bar chart SVG | `pause_by_type` |
+| `gc_causes_svg` | Doughnut chart SVG | `gc_causes` |
+| `startup_timeline_svg` | Timeline bar chart SVG | `anomalies` |
+| `metrics_grid_html` | Metrics grid HTML | `metrics` |
+| `anomaly_table_html` | Anomaly table HTML | `anomalies` |
+
+**2. Design reference**
+
+Read `references/visual-design-system.md` for CSS tokens, typography, layout patterns, and components. Inline all CSS in a `<style>` tag. Zero external dependencies (no CDN, no frameworks).
+
+**3. Layout principles**
+
+- **Content type**: Report → stacked `.panel` sections
+- **Components**: `.panel`, `.data-table`, `.banner`, `.chip`, `.metrics-grid`, `.layout-split` (for side-by-side charts)
+- **Chart containers**: wrap each SVG in `.chart-wrap` with `overflow-x: auto`
+
+**4. Structural outline** (framework, not rigid template)
+
+- Header (eyebrow + `.t-display` title + subtitle)
+- Metrics grid + key finding banner
+- Charts: heap trend → GC cadence → pause scatter → (pause by type + GC causes side-by-side) → startup timeline
+- Anomaly detail table
+- Analysis sections (executive summary, deep dive, trends, recommendations) rendered from markdown content
+- Footer
+
+**5. Content conversion from markdown to HTML**
+
+- Subsection headings → `<h3 class="t-h3">`
+- Paragraphs → `<p class="t-body">`
+- Log snippets → `<pre class="code-block"><code>`
+- Bullet lists → `<ul>` / `<li>`
+- Reasoning chains → `<ol>` with `<li><strong>现象</strong>: ...</li>` format
+
 ## Critical Reminders
 
 1. **Phase 1 is the foundation.** Skipping the global scan makes it impossible to distinguish isolated spikes from systemic problems, and often leads to over-tuning the wrong thing.
@@ -414,3 +448,4 @@ For logs with real problems, expand from the fast path. Add sections as needed:
 3. **Explain the why.** 不要只给结论，解释背后的 GC 机制。
 4. **Distinguish correlation from causation.**
 5. **Be honest about uncertainty.** 信息不足时明确说明，并指出需要什么额外数据。
+6. **HTML report is mandatory.** Both markdown and HTML reports are required deliverables for every analysis, regardless of log health.
