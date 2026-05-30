@@ -503,7 +503,7 @@ class GCLogAnalyzer:
         if self._g1_parser.pending:
             result = self._g1_parser._finalize(None)
             if result:
-                self._apply_g1_event(result)
+                self._apply_g1_event(result, None)
         if self._pending_concurrent:
             # Unfinished concurrent cycle at EOF — discard
             self._pending_concurrent = None
