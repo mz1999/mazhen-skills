@@ -276,11 +276,11 @@ Every GC analysis produces **both** a markdown report and a self-contained HTML 
 
 Before finishing any GC analysis, confirm both deliverables are complete:
 
-- [ ] **Markdown report** — save to `./output/gc_report.md`; also output the complete markdown content directly in your final response so the user can read it inline
-- [ ] **Self-contained HTML report** — save to `./output/gc_report.html`, inline all CSS and SVG charts, zero external dependencies
+- [ ] **Markdown report** — save to `{gc_log_dir}/gc_report.md`; also output the complete markdown content directly in your final response so the user can read it inline
+- [ ] **Self-contained HTML report** — save to `{gc_log_dir}/gc_report.html`, inline all CSS and SVG charts, zero external dependencies
 
 > Both deliverables are required regardless of whether the log appears healthy. Do not skip the HTML report for "simple" or "healthy" cases.
-> If the `./output` directory does not exist, create it first (`mkdir -p ./output`).
+> `{gc_log_dir}` is the directory containing the analyzed GC log file. Extract it from the log file path and create the directory if it does not exist (`mkdir -p`).
 
 ### Markdown Report
 
@@ -387,7 +387,7 @@ Use this as a **framework**, not a rigid template. Skip sections that have no me
 
 ### HTML Report
 
-After completing the markdown analysis, generate a single-file HTML report and save it to `./output/gc_report.html`.
+After completing the markdown analysis, generate a single-file HTML report and save it to `{gc_log_dir}/gc_report.html` (same directory as the analyzed GC log).
 
 **1. Get chart assets**
 
