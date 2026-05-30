@@ -276,10 +276,11 @@ Every GC analysis produces **both** a markdown report and a self-contained HTML 
 
 Before finishing any GC analysis, confirm both deliverables are complete:
 
-- [ ] **Markdown report** — full analysis with all required sections (§2-5 below)
-- [ ] **Self-contained HTML report** — inline all CSS and SVG charts, zero external dependencies
+- [ ] **Markdown report** — save to `./output/gc_report.md`; also output the complete markdown content directly in your final response so the user can read it inline
+- [ ] **Self-contained HTML report** — save to `./output/gc_report.html`, inline all CSS and SVG charts, zero external dependencies
 
 > Both deliverables are required regardless of whether the log appears healthy. Do not skip the HTML report for "simple" or "healthy" cases.
+> If the `./output` directory does not exist, create it first (`mkdir -p ./output`).
 
 ### Markdown Report
 
@@ -386,7 +387,7 @@ Use this as a **framework**, not a rigid template. Skip sections that have no me
 
 ### HTML Report
 
-After completing the markdown analysis, generate a single-file HTML report.
+After completing the markdown analysis, generate a single-file HTML report and save it to `./output/gc_report.html`.
 
 **1. Get chart assets**
 
@@ -449,3 +450,4 @@ Read `references/visual-design-system.md` for CSS tokens, typography, layout pat
 4. **Distinguish correlation from causation.**
 5. **Be honest about uncertainty.** 信息不足时明确说明，并指出需要什么额外数据。
 6. **HTML report is mandatory.** Both markdown and HTML reports are required deliverables for every analysis, regardless of log health.
+7. **Markdown report must be displayed inline.** Always output the complete markdown report content directly in your final response, not just a file path reference.
