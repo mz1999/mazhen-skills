@@ -1,7 +1,7 @@
 ---
 name: gc-log-analyzer
 description: |
-  Analyze and diagnose Java GC (garbage collection) logs. Use this skill whenever the user asks about GC logs, JVM memory issues, garbage collection performance, STW pauses, heap analysis, or tuning JVM garbage collectors (G1GC, ZGC, Shenandoah, Parallel, Serial). Trigger even if the user only mentions vague symptoms like "application pauses", "latency spikes", "JVM memory problems", or provides a gc.log file without explicitly asking for analysis. Also trigger when the user mentions JVM tuning, heap dumps, or wants to understand GC behavior from logs.
+  Analyze Java GC logs to diagnose performance issues, identify abnormal GC events, and provide tuning recommendations. Trigger when the user explicitly asks to analyze a GC log file, or mentions "GC log", "garbage collection analysis", or "analyze gc.log".
 ---
 
 # GC Log Analyzer

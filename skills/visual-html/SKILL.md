@@ -1,16 +1,12 @@
 ---
 name: visual-html
 description: >
-  Generate rich, single-file HTML artifacts instead of markdown. Use this skill
-  whenever the user wants to present information visually — whether they ask for
-  "an HTML file", "a visualization", "a report", "a comparison", "a diagram",
-  or even just "summarize this in a nice format". Also trigger when they mention
-  code reviews, PR writeups, weekly status, incident timelines, design systems,
-  prototypes, slide decks, explainer pages, or interactive editors. If the user
-  wants to compare options, explain a system, teach a concept, or present data
-  to a team, this skill is the right choice over plain markdown.
-  Automatically classifies content type, selects matching layout & components,
-  and generates a self-contained .html file with no external dependencies.
+  Generate rich, single-file HTML artifacts instead of markdown. Trigger when
+  the user explicitly asks for "an HTML file", "a visualization", "a diagram",
+  "a report page", or "slide deck", or mentions presenting data in a visual
+  format. Automatically classifies content type, selects matching layout &
+  components, and generates a self-contained .html file with no external
+  dependencies.
 ---
 
 # Visual HTML Skill
