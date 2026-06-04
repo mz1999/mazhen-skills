@@ -22,6 +22,7 @@ npx skills add mz1999/mazhen-skills --skill visual-html
 | Skill | Description |
 |-------|-------------|
 | **gc-log-analyzer** | Analyze Java GC logs — detects anomalies, diagnoses root causes, and provides tuning recommendations for G1GC, ZGC, Shenandoah, Parallel, and Serial collectors. |
+| **jdk-source-audit** | JDK source-level technical audit — JVM parameter behavior analysis, GC mechanism explanation, performance root cause diagnosis, JDK distribution comparison, and GC risk assessment. |
 
 ### Content & Writing
 
