@@ -1,6 +1,6 @@
 ---
 name: twitter-cli
-description: Use twitter-cli for ALL Twitter/X operations — reading tweets, posting, replying, quoting, liking, retweeting, following, searching, user lookups. Invoke whenever user requests any Twitter interaction.
+description: CLI for Twitter/X operations — reading, posting, replying, quoting, liking, retweeting, following, searching, and user lookups.
 author: jackwener
 version: "0.8.0"
 tags:
@@ -9,6 +9,7 @@ tags:
   - social-media
   - terminal
   - cli
+disable-model-invocation: true
 ---
 
 # twitter-cli — Twitter/X CLI Tool

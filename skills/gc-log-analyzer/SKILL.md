@@ -1,7 +1,7 @@
 ---
 name: gc-log-analyzer
-description: |
-  Analyze Java GC logs to diagnose performance issues, identify abnormal GC events, and provide tuning recommendations. Trigger when the user explicitly asks to analyze a GC log file, or mentions "GC log", "garbage collection analysis", or "analyze gc.log".
+description: Analyze Java GC logs to diagnose performance issues, identify abnormal GC events, and recommend tuning.
+disable-model-invocation: true
 ---
 
 # GC Log Analyzer

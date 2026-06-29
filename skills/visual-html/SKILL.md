@@ -1,12 +1,7 @@
 ---
 name: visual-html
-description: >
-  Generate rich, single-file HTML artifacts instead of markdown. Trigger when
-  the user explicitly asks for "an HTML file", "a visualization", "a diagram",
-  "a report page", or "slide deck", or mentions presenting data in a visual
-  format. Automatically classifies content type, selects matching layout &
-  components, and generates a self-contained .html file with no external
-  dependencies.
+description: Generate rich, single-file HTML artifacts instead of markdown, automatically classifying content type and selecting a matching layout.
+disable-model-invocation: true
 ---
 
 # Visual HTML Skill

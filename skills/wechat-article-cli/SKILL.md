@@ -1,13 +1,10 @@
 ---
 name: wechat-article-cli
-description: >
-  Fetch WeChat public account (mp.weixin.qq.com) articles as Markdown via a real browser.
-  Trigger when the user provides a WeChat article URL, asks to extract or download
-  content from a WeChat article, convert a WeChat article to Markdown, or mentions
-  mp.weixin.qq.com.
+description: Fetch WeChat public account (mp.weixin.qq.com) articles as Markdown via a real browser.
 compatibility:
   - Node.js >= 18
   - kimi-webbridge daemon running with extension connected
+disable-model-invocation: true
 ---
 
 # wechat-article-cli
@@ -67,7 +64,7 @@ Success:
   "data": {
     "title": "文章标题",
     "author": "作者名",
-    "time": "2026年5月21日",
+    "time": "2026 年 5 月 21 日",
     "markdown": "# 文章标题\n\n正文内容..."
   }
 }

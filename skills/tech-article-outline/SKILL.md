@@ -1,9 +1,8 @@
 ---
 name: tech-article-outline
-description: |
-  帮助用户梳理技术文章的结构并生成完整大纲。当用户明确提到"文章大纲"、
-  "技术写作"、"写博客"、"写教程"或需要组织零散技术要点时触发。
+description: 帮助用户梳理技术文章的结构并生成完整大纲。
 compatibility: 无特殊依赖
+disable-model-invocation: true
 ---
 
 # 技术文章大纲生成 Skill
