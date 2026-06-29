@@ -3,6 +3,7 @@
   "skills": [
     "./skills/gc-log-analyzer",
     "./skills/jdk-source-audit",
+    "./skills/retro",
     "./skills/tech-article-outline",
     "./skills/twitter-cli",
     "./skills/visual-html",

@@ -38,6 +38,12 @@ npx skills add mz1999/mazhen-skills --skill visual-html
 |-------|-------------|
 | **twitter-cli** | Guide for using twitter-cli to read, post, reply, search, and manage Twitter/X accounts via terminal. |
 
+### Workflow
+
+| Skill | Description |
+|-------|-------------|
+| **retro** | Retrospective after a feature — distills lessons from the conversation and the git trail into `docs/solutions/`, so the next session starts on prior hard-won knowledge instead of rediscovering it. Manually invoked via `/retro`. |
+
 ## License
 
 MIT

@@ -17,7 +17,7 @@ skills-lock.json                # Tracks externally sourced skill dependencies
 
 ### Skill Types
 
-- **Documentation-only**: `tech-article-outline`, `twitter-cli`, `jdk-source-audit` — single `SKILL.md`.
+- **Documentation-only**: `retro`, `tech-article-outline`, `twitter-cli`, `jdk-source-audit` — single `SKILL.md`.
 - **With reference docs**: `gc-log-analyzer` (Python parser + reference docs), `visual-html` (design system HTML/CSS reference).
 - **With executable code**: `wechat-article-cli` (Node.js CLI).
 
