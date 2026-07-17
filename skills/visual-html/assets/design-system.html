@@ -22,8 +22,7 @@
 
     /* --- Grays --- */
     --gray-50:  #F0EEE6;   /* card bg / code bg */
-    --gray-200: #D1CFC5;   /* light borders / disabled states */
-    --gray-300: #B8B6AC;   /* borders / rules */
+    --gray-200: #D1CFC5;   /* borders / rules */
     --gray-500: #87867F;   /* secondary text */
     --gray-700: #3D3D3A;   /* body text */
     --white:    #FFFFFF;   /* card surface */
@@ -37,7 +36,7 @@
     --radius-panel: 12px;
     --radius-row:    8px;
     --radius-pill: 999px;
-    --border: 1.5px solid var(--gray-300);
+    --border: 1.5px solid var(--gray-200);
   }
 
   /* ================================================================
@@ -249,7 +248,7 @@
   .data-table td {
     padding: 10px 14px;
     text-align: left;
-    border-bottom: 1px solid var(--gray-300);
+    border-bottom: 1px solid var(--gray-200);
   }
   .data-table th {
     font-family: var(--mono);
@@ -270,7 +269,7 @@
     position: absolute;
     left: 5px; top: 4px; bottom: 4px;
     width: 1.5px;
-    background: var(--gray-300);
+    background: var(--gray-200);
   }
   .timeline-item {
     position: relative;
@@ -353,7 +352,7 @@
   header { margin-bottom: 48px; }
   section { margin-bottom: 64px; }
   h2 { font-family: var(--serif); font-weight: 500; font-size: 26px; margin: 0 0 8px; }
-  hr.rule { border: none; border-top: 1px solid var(--gray-300); margin: 0 0 28px; }
+  hr.rule { border: none; border-top: 1px solid var(--gray-200); margin: 0 0 28px; }
 
   .swatch-grid {
     display: grid;
@@ -413,7 +412,6 @@
       <div class="swatch"><div class="chip" style="background:var(--rust);"></div><span class="token">--rust</span><span class="hex">#B04A3F</span></div>
       <div class="swatch"><div class="chip" style="background:var(--gray-50);"></div><span class="token">--gray-50</span><span class="hex">#F0EEE6</span></div>
       <div class="swatch"><div class="chip" style="background:var(--gray-200);"></div><span class="token">--gray-200</span><span class="hex">#D1CFC5</span></div>
-      <div class="swatch"><div class="chip" style="background:var(--gray-300);"></div><span class="token">--gray-300</span><span class="hex">#B8B6AC</span></div>
       <div class="swatch"><div class="chip" style="background:var(--gray-500);"></div><span class="token">--gray-500</span><span class="hex">#87867F</span></div>
       <div class="swatch"><div class="chip" style="background:var(--gray-700);"></div><span class="token">--gray-700</span><span class="hex">#3D3D3A</span></div>
       <div class="swatch"><div class="chip" style="background:var(--white); border-color:var(--gray-200);"></div><span class="token">--white</span><span class="hex">#FFFFFF</span></div>

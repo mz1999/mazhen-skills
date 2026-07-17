@@ -55,6 +55,7 @@ Analyze the user's content and classify into the closest type. The content type 
 
 **Decision rule:** Ask "What does the reader need to DO with this information?"
 - Pick between options → Exploration
+- Decide on a plan or spec → Exploration (plan/spec branch)
 - Follow a path → CodeUnderstanding / Diagram
 - Watch something happen → Prototype
 - Read and absorb → Report / Research
@@ -65,10 +66,15 @@ Analyze the user's content and classify into the closest type. The content type 
 For each content type, use the prescribed layout. Read `references/design-system.md` for full component CSS.
 
 ### Exploration
-- **Layout:** `.layout-tri` (3-col) or `.layout-quad` (4-col)
-- **Components:** `.panel` per option, `.code-block`, `.chip` for metrics
-- **Structure:** Header → Grid of options → Recommendation box (`.panel-subtle`, left border `--clay`)
-- **Example:** "Show 3 ways to handle API errors, side by side with tradeoffs"
+Two branches:
+- **Compare options** — use `.layout-tri` or `.layout-quad` with one `.panel` per option.
+- **Plan / spec** — use stacked `.panel` sections after a prompt box that captures the decision.
+- **Components:** `.panel`, `.code-block`, `.chip`, `.prompt-box` (for plan/spec branch)
+- **Structure:**
+  - Compare branch: Header → Grid of options → Recommendation box (`.panel-subtle`, left border `--clay`)
+  - Plan/spec branch: Header → Prompt box → Structured sections (Overview, Approach, Risks, Open questions)
+- **Example (compare):** "Show 3 ways to handle API errors, side by side with tradeoffs"
+- **Example (plan/spec):** "We picked the queue-based approach. Write an implementation plan with data model, API changes, migration steps, and open questions."
 
 ### CodeReview
 - **Layout:** Single column with margin annotations
@@ -115,6 +121,7 @@ For each content type, use the prescribed layout. Read `references/design-system
 - **Layout:** `.layout-split` or full-width with `.toolbar`
 - **Components:** `.toolbar` (sticky), drag-and-drop, `.toggle`, `.btn`
 - **Structure:** Header → Toolbar → Work area → Export panel
+- **Export requirement:** Always end with an export — e.g., "Copy as JSON", "Copy as prompt", or "Copy diff" — that turns UI state back into something pasteable into Claude Code or commitable to a file.
 
 ## Step 3: CSS & Design System
 
@@ -145,22 +152,40 @@ After generating the HTML, respond with:
 3. Instructions on how to use it ("Open the file in your browser...")
 4. Any interactive features and how they work
 
+## When Markdown Still Makes Sense
+
+HTML is the default for visual, spatial, comparable, or interactive content. If the output is a few lines of plain text or the user explicitly asks for `.md`, fall back to Markdown.
+
 ## Examples
 
-**Exploration:**
-User: "Compare 3 ways to handle errors in our API"
+**Exploration (compare):**
+User: "I'm not sure what direction to take the onboarding screen. Generate 6 distinctly different approaches—vary layout, tone, and density—and lay them out as a single HTML file in a grid so I can compare them side by side. Label each with the tradeoff it's making."
 → Classify: Exploration
-→ Layout: `.layout-tri`, each option in `.panel`
-→ Components: `.code-block` per option, `.chip` for metrics
+→ Branch: compare options
+→ Layout: `.layout-quad` or `.layout-tri`
+→ Components: `.panel` per approach, `.chip` for tradeoffs
 
-**Report:**
-User: "Summarize yesterday's outage"
-→ Classify: Report
+**Exploration (plan/spec):**
+User: "Create a thorough implementation plan in an HTML file. Include mockups, show data flow, and add important code snippets I might want to review. Make it easy to read and digest."
+→ Classify: Exploration
+→ Branch: plan/spec
 → Layout: stacked `.panel` sections
-→ Components: `.timeline`, `.data-table`, `.banner` for severity
+→ Components: `.prompt-box`, `.code-block`, SVG data-flow diagram
+
+**CodeReview:**
+User: "Help me review this PR by creating an HTML artifact that describes it. I'm not very familiar with the streaming/backpressure logic, so focus on that. Render the actual diff with inline margin annotations, color-code findings by severity, and whatever else might be needed to convey the concept well."
+→ Classify: CodeReview
+→ Layout: single column with margin annotations
+→ Components: `.diff`, `.chip` for severity, `.panel-subtle` for notes
+
+**Research / CodeUnderstanding:**
+User: "I don't understand how our rate limiter actually works. Read the relevant code and produce a single HTML explainer page: a diagram of the token-bucket flow, the 3–4 key code snippets annotated, and a 'gotchas' section at the bottom. Optimize it for someone reading it once."
+→ Classify: CodeUnderstanding (or Research if the goal is learning)
+→ Layout: `.layout-split`
+→ Components: SVG flowchart, `.code-block`, `.panel` for gotchas
 
 **Editor:**
-User: "I need to sort these tasks into priorities"
+User: "I need to reprioritize these 30 Linear tickets. Make me an HTML file with each ticket as a draggable card across Now / Next / Later / Cut columns. Pre-sort them by your best guess. Add a 'copy as Markdown' button that exports the final ordering with a one-line rationale per bucket."
 → Classify: Editor
 → Layout: full-width with `.toolbar`
-→ Components: drag-and-drop, `.btn` for export
+→ Components: drag-and-drop cards, `.btn` for "Copy as Markdown"

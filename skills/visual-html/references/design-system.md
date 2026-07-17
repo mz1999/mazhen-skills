@@ -31,8 +31,7 @@ Include all CSS at the top of every generated HTML file.
 
   /* Grays */
   --gray-50:  #F0EEE6;   /* card bg / code bg */
-  --gray-200: #D1CFC5;   /* light borders / disabled states */
-  --gray-300: #B8B6AC;   /* borders / rules */
+  --gray-200: #D1CFC5;   /* borders / rules */
   --gray-500: #87867F;   /* secondary text */
   --gray-700: #3D3D3A;   /* body text */
   --white:    #FFFFFF;   /* card surface */
@@ -46,7 +45,7 @@ Include all CSS at the top of every generated HTML file.
   --radius-panel: 12px;
   --radius-row:    8px;
   --radius-pill: 999px;
-  --border: 1.5px solid var(--gray-300);
+  --border: 1.5px solid var(--gray-200);
 }
 ```
 
@@ -254,7 +253,7 @@ code {
 .data-table th, .data-table td {
   padding: 10px 14px;
   text-align: left;
-  border-bottom: 1px solid var(--gray-300);
+  border-bottom: 1px solid var(--gray-200);
 }
 .data-table th {
   font-family: var(--mono);
@@ -274,7 +273,7 @@ code {
   position: absolute;
   left: 5px; top: 4px; bottom: 4px;
   width: 1.5px;
-  background: var(--gray-300);
+  background: var(--gray-200);
 }
 .timeline-item { position: relative; padding-bottom: 20px; }
 .timeline-item::before {
@@ -342,9 +341,9 @@ Use 4 span classes for code blocks (no external library):
 
 Flowchart nodes:
 ```css
-.node rect { fill: #fff; stroke: var(--gray-300); stroke-width: 1.5; rx: 8; }
+.node rect { fill: #fff; stroke: var(--gray-200); stroke-width: 1.5; rx: 8; }
 .node.term rect { fill: var(--gray-50); rx: 22; }
-.node.gate path { fill: #fff; stroke: var(--gray-300); stroke-width: 1.5; }
+.node.gate path { fill: #fff; stroke: var(--gray-200); stroke-width: 1.5; }
 .node.ok rect { fill: rgba(120,140,93,0.12); stroke: var(--olive); }
 .node.bad rect { fill: rgba(176,74,63,0.10); stroke: var(--rust); }
 .node { cursor: pointer; transition: transform 120ms ease; }
