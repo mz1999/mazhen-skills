@@ -22,13 +22,10 @@
 
     /* --- Grays --- */
     --gray-50:  #F0EEE6;   /* card bg / code bg */
-    --gray-100: #F0EEE6;   /* alias */
-    --gray-150: #F0EEE6;   /* alias */
-    --gray-200: #D1CFC5;   /* borders */
-    --gray-300: #D1CFC5;   /* alias */
+    --gray-200: #D1CFC5;   /* light borders / disabled states */
+    --gray-300: #B8B6AC;   /* borders / rules */
     --gray-500: #87867F;   /* secondary text */
     --gray-700: #3D3D3A;   /* body text */
-    --gray-800: #3D3D3A;   /* alias */
     --white:    #FFFFFF;   /* card surface */
 
     /* --- Typography --- */
@@ -206,10 +203,10 @@
     color: var(--ivory);
     border: 1.5px solid var(--slate);
   }
-  .btn-primary:hover { background: var(--gray-800); }
+  .btn-primary:hover { background: var(--gray-700); }
   .btn-ghost {
     background: transparent;
-    color: var(--gray-800);
+    color: var(--gray-700);
     border: 1.5px solid var(--gray-200);
   }
   .btn-ghost:hover { border-color: var(--gray-500); color: var(--slate); }
@@ -416,6 +413,7 @@
       <div class="swatch"><div class="chip" style="background:var(--rust);"></div><span class="token">--rust</span><span class="hex">#B04A3F</span></div>
       <div class="swatch"><div class="chip" style="background:var(--gray-50);"></div><span class="token">--gray-50</span><span class="hex">#F0EEE6</span></div>
       <div class="swatch"><div class="chip" style="background:var(--gray-200);"></div><span class="token">--gray-200</span><span class="hex">#D1CFC5</span></div>
+      <div class="swatch"><div class="chip" style="background:var(--gray-300);"></div><span class="token">--gray-300</span><span class="hex">#B8B6AC</span></div>
       <div class="swatch"><div class="chip" style="background:var(--gray-500);"></div><span class="token">--gray-500</span><span class="hex">#87867F</span></div>
       <div class="swatch"><div class="chip" style="background:var(--gray-700);"></div><span class="token">--gray-700</span><span class="hex">#3D3D3A</span></div>
       <div class="swatch"><div class="chip" style="background:var(--white); border-color:var(--gray-200);"></div><span class="token">--white</span><span class="hex">#FFFFFF</span></div>

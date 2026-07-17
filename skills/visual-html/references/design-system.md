@@ -3,6 +3,18 @@
 Complete CSS tokens, components, and layout patterns for HTML artifacts.
 Include all CSS at the top of every generated HTML file.
 
+## Contents
+
+- [Tokens](#tokens)
+- [Base Reset](#base-reset)
+- [Typography Scale](#typography-scale)
+- [Layout Patterns](#layout-patterns)
+- [Components](#components)
+- [Syntax Highlighting](#syntax-highlighting)
+- [SVG Patterns](#svg-patterns)
+- [Utility Classes](#utility-classes)
+- [Responsive Breakpoints](#responsive-breakpoints)
+
 ## Tokens
 
 ```css
@@ -19,7 +31,8 @@ Include all CSS at the top of every generated HTML file.
 
   /* Grays */
   --gray-50:  #F0EEE6;   /* card bg / code bg */
-  --gray-200: #D1CFC5;   /* borders */
+  --gray-200: #D1CFC5;   /* light borders / disabled states */
+  --gray-300: #B8B6AC;   /* borders / rules */
   --gray-500: #87867F;   /* secondary text */
   --gray-700: #3D3D3A;   /* body text */
   --white:    #FFFFFF;   /* card surface */

@@ -2,38 +2,46 @@
 name: visual-html
 description: Generate rich, single-file HTML artifacts instead of markdown, automatically classifying content type and selecting a matching layout.
 disable-model-invocation: true
+argument-hint: "<content or topic to turn into HTML>"
 ---
 
-# Visual HTML Skill
+# Visual HTML
 
 Generate single-file HTML artifacts for any content, automatically selecting the right visual form based on content type.
 
 ## When to Use
 
-Use this skill when the user wants to:
+Invoke this skill when you want to:
 - Present information in a visually rich, shareable format
-- Compare multiple options/solutions side by side
+- Compare multiple options or solutions side by side
 - Explain a complex system, flow, or codebase
 - Create a report, status update, or incident timeline
 - Build a throwaway interactive editor or prototype
 - Replace a markdown document with something more readable
 
-**Trigger even when the user doesn't explicitly say "HTML"** — phrases like "lay them out", "visualize", "draw a diagram", "make a slide deck", "explain how this works", or "summarize for my team" all indicate this skill should be used.
-
 ## Workflow
 
-1. **Classify** the content into one of the 10 content types below
-2. **Select** the matching layout and components
-3. **Read** `references/design-system.md` for the full CSS tokens and components
-4. **Generate** a single-file HTML with all CSS inlined in `<style>`
-5. If interactive, add JS in `<script>` at the bottom
+1. **Classify** the content into one of the 10 content types below.
+   *Done:* you have named the single best-matching content type and stated why.
+
+2. **Select** the matching layout and components from the content-type guide below.
+   *Done:* you have listed the layout class and the components you will use.
+
+3. **Read** `references/design-system.md` for the full CSS tokens and components.
+   *Done:* you have copied the relevant tokens, layout, and component CSS into the HTML.
+
+4. **Generate** a single-file HTML with all CSS inlined in `<style>`.
+   *Done:* the file has no external CSS/JS/image links and meets every constraint in the Constraints section.
+
+5. **Add interactivity** if the content type calls for it.
+   *Done:* keyboard handlers or controls are wired and tested in the generated HTML, or you have confirmed the type is static.
 
 ## Step 1: Content Classification
 
 Analyze the user's content and classify into the closest type. The content type determines everything that follows.
 
-| Content Type | Reader's Goal | Trigger Keywords |
-|-------------|--------------|------------------|
+| Content Type | Reader's Goal | Classification Signals |
+|-------------|--------------|------------------------|
 | **Exploration** | Choose between alternatives | compare, approaches, options, tradeoffs |
 | **CodeReview** | Understand code changes | diff, PR, review, annotated |
 | **CodeUnderstanding** | Follow a system's logic | how it works, flow, architecture |
@@ -110,18 +118,17 @@ For each content type, use the prescribed layout. Read `references/design-system
 
 ## Step 3: CSS & Design System
 
-Read `references/design-system.md` for the complete CSS tokens, typography scale, layout patterns, and component styles. Copy the relevant sections into every generated HTML file.
+`references/design-system.md` contains the complete CSS tokens, typography scale, layout patterns, and component styles. Copy the relevant sections into every generated HTML file.
 
-**For human reference:** Open `assets/design-system.html` in a browser to see a live, browsable showcase of all tokens, components, and layout patterns. This is a visual companion to the CSS code in `references/design-system.md` — use it to preview what the design system looks like before generating artifacts.
+**For human reference:** Open `assets/design-system.html` in a browser to see a live, browsable showcase of all tokens, components, and layout patterns. This is a visual companion to the CSS code in `references/design-system.md`.
 
-**Key principles from the design system:**
+**Design system at a glance:**
 - Warm editorial aesthetic: ivory background, clay accents, serif headings
 - `1.5px` borders and `12px` radius are signature visual elements
 - Three font families: serif (headings), sans (body), mono (code/labels)
 - Syntax highlighting uses 4 span classes: `.kw` `.str` `.cm` `.fn` (no Prism.js)
 
-
-## Constraints (never violate)
+## Constraints
 
 1. **Single file**: Everything in one `.html`. No external CSS/JS/images.
 2. **Zero dependencies**: No frameworks, no libraries, no CDN links.
