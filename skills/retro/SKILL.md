@@ -1,33 +1,61 @@
 ---
 name: retro
 disable-model-invocation: true
-description: Retrospective after a feature — distills lessons from the conversation and the git trail into docs/solutions/, so the next session starts on prior hard-won knowledge instead of rediscovering it.
-argument-hint: "[optional: brief context about what was completed]"
+description: |
+  Run a retrospective after finishing work and distill durable lessons into
+  docs/solutions/ as concrete rules the next session can act on.
+argument-hint: "[optional: one-line context about what just shipped]"
 ---
 
 # retro
 
-A conversation evaporates the moment its context resets. This skill **distills** the durable lessons out of a finished task into `docs/solutions/` — turning volatile experience into a retrievable asset, so the next agent (or you, next session) starts from what was learned rather than re-stepping the same traps.
+A conversation evaporates when context resets. This skill **distills** the durable lessons out of a finished task into `docs/solutions/` — turning volatile experience into a retrievable **rule**, so the next agent starts from what was learned instead of re-stepping the same traps.
 
-A lesson worth keeping is a **rule** — a concrete behavior that changes a future action ("before touching X, check Y"), not a maxim ("be careful with X"). State it as a rule, or it isn't ready to keep.
+A lesson worth keeping is a **rule**: a concrete behavior that changes a future action.
+
+Good: "Before touching the auth middleware, run `scripts/auth-check.sh`."
+Not a rule: "Be careful with auth."
 
 ## Steps
 
-1. **Search before creating.** Look in `docs/solutions/` for an existing entry on the same problem. *Done:* you've either found one to update, or confirmed the shelf is empty.
+1. **Prepare the shelf.**
+   Ensure `docs/solutions/` exists; create the directory structure if it does not. Search it for an existing entry on the same problem or module.
+   *Done:* you have either found a sibling entry to match format, or confirmed the shelf is empty.
 
 2. **Triangulate two sources.**
    - *Subjective* — the conversation: decisions, dead ends, surprises, the *why* behind choices.
    - *Objective* — `git log --oneline` and `git diff --stat`: what actually changed, and how big.
-   Keep only what survives both. Git with no narrative is data without wisdom; narrative with no git is self-flattery. *Done:* every kept lesson is grounded in both what was said and what shipped.
+   Keep only what survives both. Git with no narrative is data without wisdom; narrative with no git is self-flattery.
+   *Done:* every kept lesson is grounded in both what was said and what shipped.
 
-3. **Sort into two registers, each as a rule.**
+3. **Distill into rules.**
+   For each lesson, state it as a **rule** — a future action, not a maxim. Sort into two registers:
    - *What worked* — decisions that paid off, patterns worth repeating.
    - *What didn't* — dead ends, rework, surprises.
-   *Done:* zero lessons read like a maxim; each names a concrete future action.
+   *Done:* zero lessons read like advice; each names a concrete next action.
 
-4. **Write the entry** to `docs/solutions/<category>/<slug>.md`. Frontmatter: `title`, `date` (YYYY-MM-DD), `problem_type`, `module`, `severity`, `tags`. Body by type:
-   - bug/problem → What Didn't Work · Solution · Lessons Learned · Related
-   - knowledge/practice → Context · Guidance · When to Apply
-   Match the format of an existing sibling if one exists. *Done:* file written and conforms to a sibling where one exists.
+4. **Write the entry.**
+   Save to `docs/solutions/<category>/<slug>.md`. Pick `<category>` from an existing sibling when possible; otherwise use the module or problem domain (e.g., `auth`, `performance`, `frontend`, `process`).
 
-5. **Close the retrieval loop.** Written but unfindable equals unwritten. If the project's `AGENTS.md` / `CLAUDE.md` doesn't point at `docs/solutions/`, suggest a one-line pointer so future agents know to search it. *Done:* a path exists from "new session" to "this knowledge".
+   Frontmatter:
+   ```yaml
+   ---
+   title: <short sentence>
+   date: YYYY-MM-DD
+   problem_type: bug | knowledge | practice | decision
+   module: <affected area>
+   severity: low | medium | high
+   tags: [<topic>, <topic>]
+   ---
+   ```
+
+   Body by type:
+   - `bug`/`problem` → What Didn't Work · Solution · Lessons Learned · Related
+   - `knowledge`/`practice` → Context · Guidance · When to Apply
+
+   Match the format of an existing sibling if one exists.
+   *Done:* file written and conforms to a sibling where one exists.
+
+5. **Close the retrieval loop.**
+   Written but unfindable equals unwritten. If `AGENTS.md` or `CLAUDE.md` does not already point at `docs/solutions/`, add a one-line pointer telling future agents to search it first.
+   *Done:* a path exists from a new session to this knowledge.
