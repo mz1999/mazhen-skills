@@ -4,6 +4,7 @@
     "./skills/gc-log-analyzer",
     "./skills/jdk-source-audit",
     "./skills/retro",
+    "./skills/stock-checkup",
     "./skills/tech-article-outline",
     "./skills/twitter-cli",
     "./skills/visual-html",
