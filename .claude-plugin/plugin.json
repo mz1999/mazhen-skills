@@ -8,6 +8,7 @@
     "./skills/tech-article-outline",
     "./skills/twitter-cli",
     "./skills/visual-html",
-    "./skills/wechat-article-cli"
+    "./skills/wechat-article-cli",
+    "./skills/weekly-report"
   ]
 }

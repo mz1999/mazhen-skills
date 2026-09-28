@@ -43,6 +43,7 @@ npx skills add mz1999/mazhen-skills --skill visual-html
 | Skill | Description |
 |-------|-------------|
 | **retro** | Retrospective after a feature — distills lessons from the conversation and the git trail into `docs/solutions/`, so the next session starts on prior hard-won knowledge instead of rediscovering it. Manually invoked via `/retro`. |
+| **weekly-report** | Turn the task just completed in the current session into a weekly-report entry for leadership — progress and value they can grasp at a glance, not process detail; keeps names, numbers, and links; frames results at the capability layer. Manually invoked via `/weekly-report`. |
 
 ## License
 
