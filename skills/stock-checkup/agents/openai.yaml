@@ -1,5 +1,5 @@
 interface:
   display_name: "Stock Checkup"
-  short_description: "Analyze a security with a five-dimension framework"
+  short_description: "Explain price action through the essential meaning of technical indicators"
 policy:
   allow_implicit_invocation: false

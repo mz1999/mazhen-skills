@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>人工智能 ETF 159819 · 指标本质版 · 2026-10-28</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ivory:#FAF9F5;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;--sky:#6A8CAF;--rust:#B04A3F;--gray-50:#F0EEE6;--gray-200:#D1CFC5;--gray-500:#87867F;--gray-700:#3D3D3A;--white:#FFFFFF;--serif:ui-serif,"Songti SC","STSong",Georgia,serif;--sans:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--radius-panel:12px;--radius-row:8px;--border:1.5px solid var(--gray-200)}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--ivory);color:var(--slate);font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;padding:48px 24px 80px}
+.page{max-width:980px;margin:0 auto}
+.t-display{font-family:var(--serif);font-size:clamp(36px,5vw,48px);line-height:1.15;font-weight:500;letter-spacing:-.02em}
+.t-h1{font-family:var(--serif);font-size:clamp(28px,3.5vw,38px);line-height:1.2;font-weight:500;letter-spacing:-.01em}
+.t-h2{font-family:var(--serif);font-size:clamp(23px,2.5vw,28px);line-height:1.25;font-weight:500}
+.t-h3{font-family:var(--serif);font-size:21px;line-height:1.3;font-weight:500}
+.t-body{font-family:var(--sans);font-size:16px;line-height:1.75;font-weight:430}
+.t-small{font-family:var(--sans);font-size:14px;line-height:1.65;font-weight:430}
+.t-caption{font-family:var(--sans);font-size:12px;line-height:1.5;font-weight:500;color:var(--gray-500)}
+.t-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-500)}
+.panel{background:var(--white);border:var(--border);border-radius:var(--radius-panel);padding:26px}
+.panel-subtle{background:var(--gray-50);border:var(--border);border-radius:var(--radius-panel);padding:16px 20px}
+.chip{font-family:var(--mono);font-size:11.5px;background:var(--gray-50);border:var(--border);color:var(--gray-700);padding:4px 9px;border-radius:var(--radius-row);white-space:nowrap;display:inline-block}
+.banner{display:flex;align-items:baseline;gap:8px;padding:11px 15px;border:1.5px solid #E8C2AE;background:#F8E9E0;color:var(--clay-d);border-radius:10px;font-size:14px}
+.data-table{width:100%;border-collapse:collapse;font-size:14px}
+.data-table th,.data-table td{padding:11px 13px;text-align:left;border-bottom:1px solid var(--gray-200);vertical-align:top}
+.data-table th{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--gray-500);background:var(--gray-50)}
+.mb-sm{margin-bottom:12px}.mb-md{margin-bottom:24px}.mb-lg{margin-bottom:40px}.mb-xl{margin-bottom:56px}
+.text-muted{color:var(--gray-500)}
+code{font-family:var(--mono);font-size:13px;background:var(--gray-50);padding:1px 5px;border-radius:4px}
+header{border-bottom:1.5px solid var(--slate);padding-bottom:26px;margin-bottom:22px}
+.header-meta{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:22px}
+.header-meta .t-caption{text-align:right}
+h1 code{font:inherit;background:none;padding:0;color:var(--clay-d);white-space:nowrap}
+.subtitle{color:var(--gray-500);margin-top:10px;font-size:15px}
+.summary{border-top:4px solid var(--clay);padding:28px 30px}
+.summary .t-h1{margin:7px 0 14px}
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:22px;padding-top:20px;border-top:1px solid var(--gray-200)}
+.summary-grid h3{font-family:var(--sans);font-size:13px;line-height:1.4;font-weight:650;margin-bottom:6px}
+.summary-grid p{font-size:14px;line-height:1.65;color:var(--gray-700)}
+section{margin-top:42px}
+.section-head{display:flex;align-items:baseline;gap:12px;margin-bottom:18px}
+.section-number{font-family:var(--mono);font-size:12px;color:var(--clay-d)}
+.chart-panel{padding:18px 18px 12px}
+.chart-legend{display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--gray-700);margin:2px 0 8px 48px}
+.legend-line{display:inline-block;width:22px;height:3px;vertical-align:middle;margin-right:6px}
+#price-chart{display:block;width:100%;height:auto;min-height:280px}
+.observations{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
+.observation{padding:18px;background:var(--gray-50);border-radius:var(--radius-row)}
+.observation strong{display:block;font-size:14px;margin-bottom:5px}
+.observation p{font-size:14px;line-height:1.65;color:var(--gray-700)}
+.dimension{margin-top:20px}
+.dimension-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}
+.dimension-title{display:flex;align-items:baseline;gap:12px}
+.dimension-index{font-family:var(--mono);font-size:13px;color:var(--clay-d)}
+.essence{font-size:18px;line-height:1.65;margin-bottom:16px}
+.formula{font-family:var(--mono);font-size:13px;line-height:1.7;background:var(--slate);color:#E8E6DE;border-radius:var(--radius-row);padding:13px 16px;margin-bottom:18px;overflow-x:auto;white-space:nowrap}
+.reading-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.reading-block h4{font-size:13px;line-height:1.4;margin-bottom:5px;color:var(--clay-d)}
+.reading-block p{font-size:15px;line-height:1.7;color:var(--gray-700)}
+.verify{border-left:3px solid var(--sky);background:#F2F5F7;padding:12px 15px;margin-top:18px;font-size:14px;line-height:1.7}
+.verify strong{color:#526F8B}
+.merge-list{display:grid;gap:0}
+.merge-item{display:grid;grid-template-columns:150px 1fr;gap:20px;padding:17px 0;border-bottom:1px solid var(--gray-200)}
+.merge-item:last-child{border-bottom:0}
+.merge-item h3{font-size:14px;line-height:1.6}
+.merge-item p{font-size:15px;line-height:1.7;color:var(--gray-700)}
+.scenario-table td:first-child{font-weight:650;white-space:nowrap}
+.scenario-table td:nth-child(2){min-width:260px}
+.checklist{list-style:none;counter-reset:item;display:grid;grid-template-columns:1fr 1fr;gap:14px 24px}
+.checklist li{counter-increment:item;padding-left:36px;position:relative;font-size:15px;line-height:1.7}
+.checklist li::before{content:counter(item);position:absolute;left:0;top:2px;width:24px;height:24px;border-radius:50%;background:var(--oat);color:var(--slate);font-family:var(--mono);font-size:12px;display:grid;place-items:center}
+details{margin-top:18px;border-top:1px solid var(--gray-200);padding-top:16px}
+summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--clay-d)}
+details .details-body{padding-top:16px}
+.disclaimer{font-size:13px;line-height:1.7;color:var(--gray-500);border-top:1.5px solid var(--slate);padding-top:20px;margin-top:42px}
+footer{display:flex;justify-content:space-between;gap:20px;margin-top:18px;font-size:12px;color:var(--gray-500)}
+@media(max-width:1100px){.page{max-width:920px}.summary-grid{gap:16px}}
+@media(max-width:960px){.layout-split{grid-template-columns:1fr}.reading-grid{gap:18px}.scenario-table td:nth-child(2){min-width:220px}}
+@media(max-width:920px){.layout-quad{grid-template-columns:repeat(2,1fr)}.summary-grid,.observations{grid-template-columns:1fr}.summary-grid{gap:14px}.observations{gap:10px}}
+@media(max-width:880px){body{padding:28px 15px 56px;font-size:15px}.panel{padding:20px}.summary{padding:22px 20px}.header-meta{display:block}.header-meta .t-caption{text-align:left;margin-top:8px}.reading-grid,.checklist{grid-template-columns:1fr}.merge-item{grid-template-columns:1fr;gap:5px}.dimension-head{align-items:flex-start}.dimension-title{display:block}.dimension-index{display:block;margin-bottom:4px}.scenario-table,.scenario-table tbody,.scenario-table tr,.scenario-table td{display:block;width:100%}.scenario-table thead{display:none}.scenario-table tr{padding:12px 0;border-bottom:1px solid var(--gray-200)}.scenario-table td{border:0;padding:4px 0}.scenario-table td:first-child{color:var(--clay-d)}.formula{font-size:12px}.chart-panel{padding:12px 8px}.chart-legend{margin-left:36px}#price-chart{min-height:0}footer{display:block}}
+@media print{body{padding:0;background:#fff}.page{max-width:none}.panel{break-inside:avoid}section{break-inside:auto}details{display:none}#price-chart{min-height:0}}
+</style>
+</head>
+<body>
+<article class="page">
+<header>
+  <div class="header-meta">
+    <div class="t-eyebrow">Technical note · Indicator essentials</div>
+    <div class="t-caption">腾讯自选股 · 2026 年 10 月 28 日 09:39<br>盘中快照 · 前复权日线</div>
+  </div>
+  <h1 class="t-display">人工智能 ETF <code>159819</code></h1>
+  <p class="subtitle">五维技术解读 · 从指标本质理解当前走势</p>
+</header>
+
+<div class="banner mb-lg"><strong>快照限制</strong><span>今日 K 线尚未完成；现有数据仅含 60 个交易日，无法形成可靠的周线背景，因此本报告只作日线分析。</span></div>
+
+<section class="panel summary" aria-labelledby="summary-title">
+  <div class="t-eyebrow">一句话状态</div>
+  <h2 class="t-h1" id="summary-title">价格中枢仍在下移，今天的上涨暂时只是低位修复。</h2>
+  <p class="t-body">原始价格结构还没有证明下降趋势结束。指标的作用，是帮助我们分别看清这种下移的方向、速度、位置、成交反应和波动幅度，而不是再制造一个看似精确的分数。</p>
+  <div class="summary-grid">
+    <div><h3>已经看到</h3><p>近 20 个交易日下跌 20.23%，20 日平均收盘中枢继续下移；今日现价较昨收上涨 1.12%。</p></div>
+    <div><h3>可以这样解释</h3><p>日线下降结构中出现盘中回升，但现价仍低于今日开盘价，日内跟随力度暂时一般。</p></div>
+    <div><h3>还不能推出</h3><p>不能据此确认底部、计算反转概率，也不能把「低于均线」直接等同于「值得买入」。</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="raw-title">
+  <div class="section-head"><span class="section-number">01</span><h2 class="t-h2" id="raw-title">先看原始价量：不用指标，也能看到什么</h2></div>
+  <div class="panel chart-panel">
+    <div class="chart-legend">
+      <span><i class="legend-line" style="background:var(--sky)"></i>每日收盘价</span>
+      <span><i class="legend-line" style="background:var(--slate)"></i>20 日平均收盘价</span>
+      <span class="text-muted">最后一根为 09:39 盘中数据</span>
+    </div>
+    <svg id="price-chart" viewBox="0 0 960 390" role="img" aria-label="159819 最近 60 个交易日收盘价与 20 日平均线，收盘价和平均价格中枢整体下移"></svg>
+    <p class="t-caption">均线已包含今日盘中价，会随今日价格变化。图中区域只是后续观察位置，不是必然有效的支撑或压力。</p>
+  </div>
+  <div class="observations">
+    <div class="observation"><strong>高低点仍在下移</strong><p>9 月 23 日盘中高点为 1.816，10 月 9 日为 1.676，10 月 26 日为 1.501。反弹高点逐级降低，是下降结构的直接证据。</p></div>
+    <div class="observation"><strong>今日上涨不等于日内走强</strong><p>现价 1.443 高于昨收 1.427，却低于开盘 1.450，位于今日已出现区间的约 30% 位置。</p></div>
+    <div class="observation"><strong>盘中量不能与全天量直接比较</strong><p>截至 09:39 成交 23.89 万手；昨日全天为 187.62 万手。两者时间窗口不同，不能据此断言缩量。</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="dimensions-title">
+  <div class="section-head"><span class="section-number">02</span><h2 class="t-h2" id="dimensions-title">再看五个维度：每个指标究竟测量什么</h2></div>
+
+  <article class="panel dimension" aria-labelledby="trend-title">
+    <div class="dimension-head"><div class="dimension-title"><span class="dimension-index">01 / 趋势</span><h3 class="t-h3" id="trend-title">均线：观察平均价格中枢往哪里移动</h3></div><span class="chip">中枢仍向下</span></div>
+    <p class="essence">一句话讲透：<strong>均线不是真实持仓成本，而是过去若干周期收盘价的算术平均。</strong>均线向下，意味着这个平均价格中枢正在下移。</p>
+    <div class="formula">MA20 = 最近 20 个交易日的收盘价之和 ÷ 20</div>
+    <div class="reading-grid">
+      <div class="reading-block"><h4>当前怎么读</h4><p>MA20 为 1.5491，上一交易日为 1.5674，本期下降 0.0183。它与前述高低点下移描述的是同一个下降结构，不是额外的一份利空证据。</p></div>
+      <div class="reading-block"><h4>不能说明什么</h4><p>价格低于多条均线，不等于获得多份独立的看空理由。均线也不知道投资者真实买入价、成交量和换手情况，不天然构成压力。</p></div>
+    </div>
+    <div class="verify"><strong>怎样验证结构改善：</strong>先观察日线高低点是否停止下移，再看 MA20 是否连续走平并转为上行。单日涨回均线附近，不足以替代这两个观察。</div>
+  </article>
+
+  <article class="panel dimension" aria-labelledby="momentum-title">
+    <div class="dimension-head"><div class="dimension-title"><span class="dimension-index">02 / 动能</span><h3 class="t-h3" id="momentum-title">MACD：比较快、慢平均价格之间的距离</h3></div><span class="chip">尚未确认修复</span></div>
+    <p class="essence">一句话讲透：<strong>MACD 测量的是两条平均线的距离变化，不是市场里真实存在的一股多空力量。</strong></p>
+    <div class="formula">DIF = EMA12 − EMA26　　DEA = DIF 的 9 周期 EMA</div>
+    <div class="reading-grid">
+      <div class="reading-block"><h4>当前怎么读</h4><p>DIF 为 −0.073，低于零轴，表示 12 日指数均线仍低于 26 日指数均线。DIF 又略低于 DEA（−0.070），这两条线的关系尚未给出修复确认。</p></div>
+      <div class="reading-block"><h4>不能说明什么</h4><p>DIF 为负不表示资金正在净流出，也不能单独推出明天继续下跌。它与均线同样源于价格，结论存在信息重合。</p></div>
+    </div>
+    <div class="verify"><strong>怎样验证动能修复：</strong>观察 DIF 是否停止下行、逐渐靠近 DEA，同时价格不再创近期新低。若只有 DIF 改善而价格结构继续下移，应保留两种解释的冲突。</div>
+  </article>
+
+  <article class="panel dimension" aria-labelledby="position-title">
+    <div class="dimension-head"><div class="dimension-title"><span class="dimension-index">03 / 位置</span><h3 class="t-h3" id="position-title">乖离率：现价相对平均收盘水平偏了多少</h3></div><span class="chip">低于 MA20 6.85%</span></div>
+    <p class="essence">一句话讲透：<strong>乖离率只是把「现价与均线有多远」换成百分比。</strong>它不判断这个价格是否合理。</p>
+    <div class="formula">BIAS20 =（1.443 − 1.5491）÷ 1.5491 × 100% = −6.85%</div>
+    <div class="reading-grid">
+      <div class="reading-block"><h4>当前怎么读</h4><p>现价比过去 20 日平均收盘水平低 6.85%。原始价格上，1.424 至 1.437 是近期多个低点形成的观察区域；更下方看 1.386，上方先看 1.497 至 1.507。</p></div>
+      <div class="reading-block"><h4>不能说明什么</h4><p>−6.85% 不代表过去 20 日买入者平均亏损 6.85%，也不代表「跌多了就会回归均线」。真实持仓盈亏取决于买入价、数量和是否仍持有。</p></div>
+    </div>
+    <div class="verify"><strong>怎样验证区域意义：</strong>若价格在 1.424 至 1.437 内止跌，并在后续收盘中回到 1.457 上方，近期低点的参考意义增强；若收盘跌破 1.424 且反抽不能收回，原区域解释失效。</div>
+  </article>
+
+  <article class="panel dimension" aria-labelledby="volume-title">
+    <div class="dimension-head"><div class="dimension-title"><span class="dimension-index">04 / 量价</span><h3 class="t-h3" id="volume-title">量比：当前成交速度相对近期是否活跃</h3></div><span class="chip">活跃但尚待收盘验证</span></div>
+    <p class="essence">一句话讲透：<strong>量比比较的是成交速度，不是在统计买方比卖方多了多少。</strong>每笔成交本来就同时有买方和卖方。</p>
+    <div class="formula">量比 = 截至当前的每分钟平均成交量 ÷ 过去 5 日每分钟平均成交量</div>
+    <div class="reading-grid">
+      <div class="reading-block"><h4>当前怎么读</h4><p>量比 1.97，表示按数据接口口径，开盘阶段成交速度高于近 5 日基准。价格较昨收上涨、却低于开盘，说明截至 09:39，活跃成交尚未带来明显的日内价格跟随。</p></div>
+      <div class="reading-block"><h4>不能说明什么</h4><p>量比高不等于净买盘强，也不保证放量上涨。开盘初期的量比容易受到时段结构影响，23.89 万手的盘中累计量也不能与昨日全天量相比。</p></div>
+    </div>
+    <div class="verify"><strong>怎样验证量价配合：</strong>收盘后比较全天量与过去 5 个完整交易日的日均量约 242.82 万手，同时观察收盘是否靠近日内高位。只看成交量，不看价格反应，信息并不完整。</div>
+  </article>
+
+  <article class="panel dimension" aria-labelledby="volatility-title">
+    <div class="dimension-head"><div class="dimension-title"><span class="dimension-index">05 / 波动</span><h3 class="t-h3" id="volatility-title">ATR：近期一天通常覆盖多大的价格范围</h3></div><span class="chip">近期波幅不可忽略</span></div>
+    <p class="essence">一句话讲透：<strong>ATR 测量价格一天走了多大范围，不关心这个范围最终向上还是向下。</strong>它还纳入跳空造成的缺口。</p>
+    <div class="formula">TR = max（最高 − 最低，|最高 − 昨收|，|最低 − 昨收|）　　ATR14 = TR 的 Wilder 平滑值</div>
+    <div class="reading-grid">
+      <div class="reading-block"><h4>当前怎么读</h4><p>ATR14 约为 0.0561 元，相当于现价的 3.88%。它概括近期真实波幅；今日目前高低差仅 0.020 元，但盘中数据尚不能说明全天波动已经收窄。</p></div>
+      <div class="reading-block"><h4>不能说明什么</h4><p>ATR 不是对未来涨跌幅的预测，也不指示方向。它只描述波动尺度，不能单独代表基本面、流动性或本金损失等全部风险。</p></div>
+    </div>
+    <div class="verify"><strong>怎样验证波动变化：</strong>等待完整 K 线，再观察后续 ATR 是否持续下降，以及价格是否同时停止创新低。单根尚未完成的 K 线不能确认波动降温。</div>
+  </article>
+</section>
+
+<section aria-labelledby="merge-title">
+  <div class="section-head"><span class="section-number">03</span><h2 class="t-h2" id="merge-title">合并证据：哪些话其实在重复</h2></div>
+  <div class="panel merge-list">
+    <div class="merge-item"><h3>重复描述同一件事</h3><p>价格低于 MA20、MA20 下移、DIF 小于零，都在描述近期价格低于过去平均水平。它们彼此印证计算一致，但不是三份独立原因。</p></div>
+    <div class="merge-item"><h3>真正增加的观察</h3><p>乖离率补充「距离均值多远」，ATR 补充「近期波动多大」，量比补充「当前成交多活跃」。它们回答的问题不同，才构成增量信息。</p></div>
+    <div class="merge-item"><h3>目前仍缺少的观察</h3><p>没有足够周线数据，也没有今日完整 K 线。因此，本报告不能判断更大级别趋势，也不能确认今日收盘形态。</p></div>
+    <div class="merge-item"><h3>合并后的状态</h3><p>日线下降结构仍在，盘中出现修复；现有指标没有提供足够证据把这种修复升级为趋势反转，也不支持给出反转概率。</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenario-title">
+  <div class="section-head"><span class="section-number">04</span><h2 class="t-h2" id="scenario-title">条件推演：后面看什么，而不是猜明天涨跌</h2></div>
+  <div class="panel">
+    <table class="data-table scenario-table">
+      <thead><tr><th>情境</th><th>观察条件</th><th>如何解释</th><th>失效条件</th></tr></thead>
+      <tbody>
+        <tr><td>短线修复</td><td>1.424 至 1.437 未被收盘跌破，随后收盘回到今日高点 1.457 上方。</td><td>近期低点区域暂时有效，可继续观察 1.497 至 1.507；这仍不等于中期反转。</td><td>价格重新收于 1.437 下方。</td></tr>
+        <tr><td>低位拉锯</td><td>价格未收上 1.457，但也未收盘跌破 1.424。</td><td>买卖成交仍在近期低位附近寻找平衡，当前不足以形成方向判断。</td><td>收盘离开上述观察边界后，转入相应情境重新评估。</td></tr>
+        <tr><td>下降延续</td><td>收盘跌破 1.424，随后反抽又不能收回 1.424 至 1.437。</td><td>近期低点区域的解释失效，下一处原始价格观察位置为 1.386。</td><td>价格重新收回该区域，并未再创出近期新低。</td></tr>
+      </tbody>
+    </table>
+    <div class="panel-subtle" style="margin-top:18px"><strong>中期结构改善需要更多证据：</strong>高低点停止下移、MA20 走平并上行、DIF 与 DEA 的距离改善应共同观察。单个指标一次转向，不承担确认反转的任务。</div>
+  </div>
+</section>
+
+<section aria-labelledby="checklist-title">
+  <div class="section-head"><span class="section-number">05</span><h2 class="t-h2" id="checklist-title">收盘与后续观察清单</h2></div>
+  <div class="panel">
+    <ol class="checklist">
+      <li>今日收盘相对开盘价 1.450、盘中高点 1.457 和观察区域 1.424 至 1.437 的位置。</li>
+      <li>全天成交量与过去 5 个完整交易日日均量约 242.82 万手的比较，以及收盘是否靠近日内高位。</li>
+      <li>后续高低点是否停止下移，MA20 是否由下降转为走平，而不是只看价格是否短暂触碰均线。</li>
+      <li>DIF 是否向 DEA 靠近，以及 ATR 是否在完整 K 线上持续变化；两项分别观察动能和波幅，不互相替代。</li>
+    </ol>
+    <details>
+      <summary>查看计算口径与关键数值</summary>
+      <div class="details-body">
+        <table class="data-table">
+          <thead><tr><th>项目</th><th>数值</th><th>口径</th></tr></thead>
+          <tbody>
+            <tr><td>现价 / 昨收</td><td>1.443 / 1.427 元</td><td>2026 年 10 月 28 日 09:39，盘中</td></tr>
+            <tr><td>MA20</td><td>1.5491 元</td><td>最近 20 个周期收盘价的算术平均，包含今日盘中价</td></tr>
+            <tr><td>BIAS20</td><td>−6.85%</td><td>现价相对 MA20 的百分比偏离</td></tr>
+            <tr><td>DIF / DEA</td><td>−0.073 / −0.070</td><td>原报告同一时点的 MACD 接口值</td></tr>
+            <tr><td>ATR14</td><td>0.0561 元（现价的 3.88%）</td><td>基于同一组 OHLC，采用 14 周期 Wilder 平滑</td></tr>
+            <tr><td>量比</td><td>1.97</td><td>腾讯自选股盘中接口值，开盘阶段口径</td></tr>
+          </tbody>
+        </table>
+        <p class="t-small text-muted" style="margin-top:14px">数据来源：腾讯自选股 westock-mcp，原快照覆盖 2026 年 7 月 29 日至 10 月 28 日，共 60 个交易日。MA20 与 BIAS20 已按原始收盘价复算；ATR14 为本次按同一快照计算。不同软件的指标参数和平滑口径可能不同，比较前应先统一口径。</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<aside class="disclaimer"><strong>分析边界与风险提示：</strong>本报告只解释历史价量与技术指标，不包含指数成分股、基本面、估值、新闻或盘中 Level-2 数据，也不提供个性化交易指令。技术指标是对历史数据的加工，过往价量不预示未来收益。</aside>
+<footer><span>人工智能 ETF（159819）· 指标本质版</span><span>数据截至 2026 年 10 月 28 日 09:39</span></footer>
+</article>
+<script>
+const dates=["2026-07-29","2026-07-30","2026-07-31","2026-08-03","2026-08-04","2026-08-05","2026-08-06","2026-08-07","2026-08-10","2026-08-11","2026-08-12","2026-08-13","2026-08-14","2026-08-17","2026-08-18","2026-08-19","2026-08-20","2026-08-21","2026-08-24","2026-08-25","2026-08-26","2026-08-27","2026-08-28","2026-08-31","2026-09-01","2026-09-02","2026-09-03","2026-09-04","2026-09-07","2026-09-08","2026-09-09","2026-09-10","2026-09-11","2026-09-14","2026-09-15","2026-09-16","2026-09-17","2026-09-18","2026-09-21","2026-09-22","2026-09-23","2026-09-24","2026-09-28","2026-09-29","2026-09-30","2026-10-08","2026-10-09","2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-19","2026-10-20","2026-10-21","2026-10-22","2026-10-23","2026-10-26","2026-10-27","2026-10-28"];
+const closes=[1.782,1.67,1.765,1.721,1.822,1.852,1.845,1.866,1.814,1.816,1.832,1.828,1.848,1.903,1.877,1.739,1.73,1.749,1.676,1.685,1.692,1.753,1.736,1.78,1.771,1.739,1.732,1.705,1.75,1.727,1.72,1.699,1.697,1.664,1.666,1.723,1.714,1.762,1.78,1.809,1.795,1.762,1.681,1.685,1.659,1.601,1.605,1.557,1.551,1.499,1.445,1.447,1.454,1.475,1.486,1.435,1.497,1.478,1.427,1.443];
+const ma20=[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,1.791,1.7865,1.7907,1.7892,1.7922,1.7896,1.784,1.7783,1.7703,1.7671,1.7626,1.757,1.7506,1.743,1.7311,1.7205,1.7197,1.7189,1.7195,1.7247,1.7309,1.7361,1.7366,1.7338,1.7291,1.7235,1.7166,1.7102,1.7028,1.6928,1.6814,1.6677,1.6551,1.643,1.6335,1.6245,1.6101,1.5993,1.5851,1.5674,1.5491];
+const svg=document.getElementById("price-chart");
+const ns="http://www.w3.org/2000/svg";
+const left=64,right=26,chartTop=24,chartBottom=50,width=960,height=390,min=1.3,max=1.95;
+const x=i=>left+i*(width-left-right)/(dates.length-1);
+const y=v=>chartTop+(max-v)*(height-chartTop-chartBottom)/(max-min);
+function add(tag,attrs,text){const el=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));if(text!==undefined)el.textContent=text;svg.appendChild(el);return el}
+[1.3,1.5,1.7,1.9].forEach(v=>{add("line",{x1:left,x2:width-right,y1:y(v),y2:y(v),stroke:"#D1CFC5","stroke-width":1});add("text",{x:left-12,y:y(v)+4,"text-anchor":"end","font-size":12,fill:"#87867F","font-family":"ui-monospace,monospace"},v.toFixed(2))});
+[[0,19],[20,39],[40,59]].forEach(([a,b])=>{const i=Math.round((a+b)/2);add("text",{x:x(i),y:height-18,"text-anchor":"middle","font-size":12,fill:"#87867F","font-family":"ui-monospace,monospace"},dates[i].slice(5))});
+function path(values){let d="",open=false;values.forEach((v,i)=>{if(v===null){open=false;return}d+=(open?"L":"M")+x(i).toFixed(2)+" "+y(v).toFixed(2)+" ";open=true});return d.trim()}
+add("path",{d:path(ma20),fill:"none",stroke:"#141413","stroke-width":2.2,"stroke-linejoin":"round","stroke-linecap":"round"});
+add("path",{d:path(closes),fill:"none",stroke:"#6A8CAF","stroke-width":2.6,"stroke-linejoin":"round","stroke-linecap":"round"});
+const last=dates.length-1;
+add("circle",{cx:x(last),cy:y(closes[last]),r:5,fill:"#D97757",stroke:"#FAF9F5","stroke-width":2});
+add("text",{x:x(last)-8,y:y(closes[last])-14,"text-anchor":"end","font-size":13,fill:"#B85C3E","font-weight":600,"font-family":"ui-monospace,monospace"},"1.443");
+add("text",{x:x(last),y:y(ma20[last])-12,"text-anchor":"end","font-size":12,fill:"#3D3D3A","font-family":"ui-monospace,monospace"},"MA20 1.5491");
+</script>
+<noscript><p class="panel-subtle">启用 JavaScript 后可查看收盘价与 MA20 图；正文包含全部结论和关键数值。</p></noscript>
+</body>
+</html>
