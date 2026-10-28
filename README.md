@@ -17,6 +17,8 @@ npx skills add mz1999/mazhen-skills --skill visual-html
 
 ## Skills
 
+All skills are user-invoked in both Claude Code and Codex. Invoke them by name, such as `/gc-log-analyzer`.
+
 ### DevOps & Observability
 
 | Skill | Description |
@@ -30,6 +32,7 @@ npx skills add mz1999/mazhen-skills --skill visual-html
 |-------|-------------|
 | **tech-article-outline** | Generate structured outlines for technical articles, blogs, and tutorials. Supports iterative refinement. |
 | **visual-html** | Generate rich, single-file HTML artifacts — reports, comparisons, timelines, diagrams, slide decks — with a warm editorial design system and zero dependencies. |
+| **visual-html-patterns** | Choose content-led HTML presentation patterns for reports, explainers, comparisons, plans, prototypes, and editors without imposing a fixed visual style. |
 | **wechat-article-cli** | Fetch WeChat public account (mp.weixin.qq.com) articles as Markdown via the real browser. `npm install -g wechat-article-cli` |
 
 ### Social & Automation
@@ -42,8 +45,8 @@ npx skills add mz1999/mazhen-skills --skill visual-html
 
 | Skill | Description |
 |-------|-------------|
-| **retro** | Retrospective after a feature — distills lessons from the conversation and the git trail into `docs/solutions/`, so the next session starts on prior hard-won knowledge instead of rediscovering it. Manually invoked via `/retro`. |
-| **weekly-report** | Turn the task just completed in the current session into a weekly-report entry for leadership — progress and value they can grasp at a glance, not process detail; keeps names, numbers, and links; frames results at the capability layer. Manually invoked via `/weekly-report`. |
+| **retro** | Retrospective after a feature — distills lessons from the conversation and the git trail into `docs/solutions/`, so the next session starts on prior hard-won knowledge instead of rediscovering it. |
+| **weekly-report** | Turn the task just completed in the current session into a weekly-report entry for leadership — progress and value they can grasp at a glance, not process detail; keeps names, numbers, and links; frames results at the capability layer. |
 
 ## License
 

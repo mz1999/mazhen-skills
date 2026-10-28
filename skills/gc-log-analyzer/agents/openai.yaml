@@ -1,0 +1,5 @@
+interface:
+  display_name: "GC Log Analyzer"
+  short_description: "Diagnose Java GC logs and recommend tuning"
+policy:
+  allow_implicit_invocation: false

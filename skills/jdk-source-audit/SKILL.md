@@ -1,6 +1,6 @@
 ---
 name: jdk-source-audit
-description: 基于 JDK 源码做 JVM/GC 技术审计与原理讲解。当用户需要解释某个 GC 机制（如 ZGC 染色指针、G1 Mixed GC）、分析某个 JVM 参数（如 G1NewSizePercent）、诊断 GC 日志/现象、或对比毕昇 JDK 与 OpenJDK 的差异时使用——只要答案需要落到"在特定发行版源码上成立"，就用这个 skill。
+description: 基于 JDK 源码审计 JVM/GC 机制、参数行为和发行版差异。
 disable-model-invocation: true
 ---
 

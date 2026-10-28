@@ -1,0 +1,5 @@
+interface:
+  display_name: "Weekly Report"
+  short_description: "Turn completed work into a leadership update"
+policy:
+  allow_implicit_invocation: false

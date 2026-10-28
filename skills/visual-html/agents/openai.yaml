@@ -1,0 +1,5 @@
+interface:
+  display_name: "Visual HTML"
+  short_description: "Generate HTML with a warm editorial design system"
+policy:
+  allow_implicit_invocation: false

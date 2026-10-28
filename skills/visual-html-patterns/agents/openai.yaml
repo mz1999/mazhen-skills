@@ -1,0 +1,5 @@
+interface:
+  display_name: "Visual HTML Patterns"
+  short_description: "Choose content-led presentation for HTML artifacts"
+policy:
+  allow_implicit_invocation: false

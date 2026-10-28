@@ -1,0 +1,5 @@
+interface:
+  display_name: "WeChat Article CLI"
+  short_description: "Fetch WeChat articles as Markdown"
+policy:
+  allow_implicit_invocation: false

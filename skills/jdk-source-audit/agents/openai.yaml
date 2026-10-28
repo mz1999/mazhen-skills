@@ -1,0 +1,5 @@
+interface:
+  display_name: "JDK Source Audit"
+  short_description: "Audit JVM and GC behavior against JDK source"
+policy:
+  allow_implicit_invocation: false

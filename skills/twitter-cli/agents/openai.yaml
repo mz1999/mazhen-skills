@@ -1,0 +1,5 @@
+interface:
+  display_name: "Twitter CLI"
+  short_description: "Read and manage Twitter/X through the CLI"
+policy:
+  allow_implicit_invocation: false

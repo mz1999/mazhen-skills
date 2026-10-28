@@ -1,0 +1,5 @@
+interface:
+  display_name: "Tech Article Outline"
+  short_description: "Create structured technical article outlines"
+policy:
+  allow_implicit_invocation: false

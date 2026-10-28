@@ -4,21 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This is a personal skills collection for Claude Code, distributed via the `skills` CLI. Skills are registered in `.claude-plugin/plugin.json` and each lives in `skills/<name>/`. Most skills are pure documentation (a single `SKILL.md` with YAML frontmatter). The exception is `wechat-article-cli`, which is a full Node.js CLI package.
+This is a personal skills collection for Claude Code and Codex, distributed via the `skills` CLI. Skills are registered in `.claude-plugin/plugin.json` and each lives in `skills/<name>/`. Most skills are documentation-only; `wechat-article-cli` also includes a full Node.js CLI package.
 
 ## Project Structure
 
 ```
-.claude-plugin/plugin.json     # Registry of all skills
-skills/<name>/SKILL.md          # Skill definition with YAML frontmatter
-skills/<name>/...               # Optional supporting files (scripts, references, assets)
-skills-lock.json                # Tracks externally sourced skill dependencies
+.claude-plugin/plugin.json          # Registry of all skills
+skills/<name>/SKILL.md               # Skill definition with YAML frontmatter
+skills/<name>/agents/openai.yaml     # Codex UI metadata and invocation policy
+skills/<name>/...                    # Optional supporting files (scripts, references, assets)
+skills-lock.json                     # Tracks externally sourced skill dependencies
 ```
 
 ### Skill Types
 
-- **Documentation-only**: `retro`, `tech-article-outline`, `twitter-cli`, `jdk-source-audit`, `weekly-report` — single `SKILL.md`.
-- **With reference docs**: `gc-log-analyzer` (Python parser + reference docs), `visual-html` (design system HTML/CSS reference).
+- **Documentation-only**: `retro`, `tech-article-outline`, `twitter-cli`, `jdk-source-audit`, `weekly-report` — no executable runtime.
+- **With reference docs**: `gc-log-analyzer` (Python parser + reference docs), `visual-html` (design system HTML/CSS reference), `visual-html-patterns` (presentation patterns + source example index).
 - **With executable code**: `wechat-article-cli` (Node.js CLI).
 
 ## Development Commands
@@ -50,22 +51,33 @@ The `test/` directory contains sample GC log files (not unit tests).
 
 ### Skill Registration
 
-To add or remove a skill, update both:
+To add or remove a skill, update all three:
 1. `skills/<name>/SKILL.md` — create the skill file with frontmatter
-2. `.claude-plugin/plugin.json` — add the path to the `skills` array
+2. `skills/<name>/agents/openai.yaml` — add Codex UI metadata and invocation policy
+3. `.claude-plugin/plugin.json` — add the path to the `skills` array
 
 ### SKILL.md Frontmatter
 
-Required fields: `name`, `description`. Optional: `compatibility`.
+Required fields: `name`, `description`. Optional: `compatibility`. All skills are user-invoked, with a short human-facing description rather than a model-trigger list.
 
 ```yaml
 ---
 name: skill-name
-description: |
-  Multi-line description of when to trigger this skill.
+description: Short human-facing summary for the skill picker.
+disable-model-invocation: true
 compatibility:
   - Node.js >= 18
 ---
+```
+
+Keep the Claude Code and Codex invocation policies in sync. Every user-invoked skill also has this Codex policy in `agents/openai.yaml`:
+
+```yaml
+interface:
+  display_name: "Skill Name"
+  short_description: "Short human-facing summary"
+policy:
+  allow_implicit_invocation: false
 ```
 
 ### wechat-article-cli Architecture
