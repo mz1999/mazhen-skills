@@ -27,9 +27,9 @@ Choose the presentation from the reader's task. Treat source examples as informa
    Choose a primary pattern and supporting patterns only when they serve distinct reader tasks. If none fits, design a new form from the reader's task and record why it fits better.
    *Done:* you have either named the selected pattern IDs and explained their fit, or named the custom form and explained why no existing pattern fits; you have identified any source example IDs worth consulting.
 
-3. **Consult only the useful source examples.**
-   Consult selected examples when they would add useful detail and web access is available. Use `references/example-index.md` to open the original HTML, and study its information hierarchy, sequencing, and interactions; its colors, typography, spacing, and component styling are not defaults. When web access is unavailable, proceed from the local pattern descriptions and record that the original examples were not consulted.
-   *Done:* you have extracted the structural ideas needed for this artifact from examples or local descriptions, and recorded any original-example consultation skipped because web access was unavailable.
+3. **Consult only the useful local source examples.**
+   When selected examples would add useful detail, use `references/example-index.md` to locate and read their local HTML. Study their information hierarchy, sequencing, and interactions; their colors, typography, spacing, and component styling are not defaults. Use online originals only when the user explicitly asks to check or update the upstream version. If a local example is missing, record the gap and continue from the local pattern descriptions.
+   *Done:* you have extracted the structural ideas needed for this artifact from local examples or pattern descriptions, recorded any missing local examples, and identified any user-requested online consultation.
 
 4. **Design the information architecture before the visuals.**
    Outline the sections, evidence, reading order, and controls. Preserve supplied facts and uncertainty; omit unsupported sections rather than inventing content to fill a pattern. Add interaction only when it improves comparison, exploration, explanation, input, or export.

@@ -2,7 +2,7 @@
 
 Select patterns by the reader's task, not by the document's filename or the amount of content. Combine patterns when the reader has multiple distinct tasks. Each pattern describes information relationships and useful interactions; adapt its structure and create the visual design for the current content.
 
-Example IDs refer to `example-index.md` in this directory. Consult only the examples relevant to the selected patterns.
+Example IDs refer to the local HTML files indexed in `example-index.md`. Consult only the examples relevant to the selected patterns.
 
 ## Compare & Decide
 

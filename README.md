@@ -32,7 +32,7 @@ All skills are user-invoked in both Claude Code and Codex. Invoke them by name, 
 |-------|-------------|
 | **tech-article-outline** | Generate structured outlines for technical articles, blogs, and tutorials. Supports iterative refinement. |
 | **visual-html** | Generate rich, single-file HTML artifacts — reports, comparisons, timelines, diagrams, slide decks — with a warm editorial design system and zero dependencies. |
-| **visual-html-patterns** | Choose content-led HTML presentation patterns for reports, explainers, comparisons, plans, prototypes, and editors without imposing a fixed visual style. |
+| **visual-html-patterns** | Choose content-led HTML presentation patterns for reports, explainers, comparisons, plans, prototypes, and editors, with 31 local source examples and no fixed visual style. |
 | **wechat-article-cli** | Fetch WeChat public account (mp.weixin.qq.com) articles as Markdown via the real browser. `npm install -g wechat-article-cli` |
 
 ### Social & Automation
