@@ -1,5 +1,5 @@
 interface:
   display_name: "Stock Checkup"
-  short_description: "Explain price action through the essential meaning of technical indicators"
+  short_description: "Explain price action with evidence, mechanisms, and conditional judgments"
 policy:
   allow_implicit_invocation: false
